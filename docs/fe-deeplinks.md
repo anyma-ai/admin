@@ -25,6 +25,7 @@ This document describes the frontend API contract for Deeplinks analytics.
     "unique": 30,
     "visits": 200,
     "purchased": 25,
+    "transactions": 32,
     "revenue": 325.5,
     "conversion": 20.8
   }
@@ -36,6 +37,7 @@ This document describes the frontend API contract for Deeplinks analytics.
 - **unique**: distinct users with `isNewUser = true` in period.
 - **total**: distinct users with ≥1 chat session in period and at least one deeplink event in period.
 - **purchased**: distinct users (from `total`) with ≥1 payment in period.
+- **transactions**: count of payments in period for the deeplink.
 - **revenue**: sum of payment amount for the deeplink in period, converted to USD.
 - **conversion**: `purchased / total * 100`.
 

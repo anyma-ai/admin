@@ -54,6 +54,7 @@ export type DeeplinkAnalyticsItem = {
   unique: number;
   visits: number;
   purchased: number;
+  transactions: number;
   revenue: number;
   conversion: number;
 };

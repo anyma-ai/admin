@@ -84,6 +84,7 @@ type ChartDatum = {
 type DeeplinkSortKey =
   | 'total'
   | 'revenue'
+  | 'transactions'
   | 'visits'
   | 'unique'
   | 'purchased'
@@ -189,6 +190,7 @@ function isValidDeeplinkSort(
   return (
     value === 'total' ||
     value === 'revenue' ||
+    value === 'transactions' ||
     value === 'visits' ||
     value === 'unique' ||
     value === 'purchased' ||
@@ -844,6 +846,7 @@ export function AnalyticsPage() {
     () => [
       { value: 'total', label: 'Total' },
       { value: 'revenue', label: 'Revenue' },
+      { value: 'transactions', label: 'Transactions' },
       { value: 'visits', label: 'Visits' },
       { value: 'purchased', label: 'Customers' },
       { value: 'unique', label: 'Unique' },
@@ -933,6 +936,9 @@ export function AnalyticsPage() {
         acc.unique += Number.isFinite(item.unique) ? item.unique : 0;
         acc.visits += Number.isFinite(item.visits) ? item.visits : 0;
         acc.purchased += Number.isFinite(item.purchased) ? item.purchased : 0;
+        acc.transactions += Number.isFinite(item.transactions)
+          ? item.transactions
+          : 0;
         acc.revenue += Number.isFinite(item.revenue) ? item.revenue : 0;
         return acc;
       },
@@ -941,6 +947,7 @@ export function AnalyticsPage() {
         unique: 0,
         visits: 0,
         purchased: 0,
+        transactions: 0,
         revenue: 0,
       },
     );
@@ -963,19 +970,6 @@ export function AnalyticsPage() {
             style={{ minWidth: 100, fontSize: 12 }}
           >
             Ref
-          </Typography>
-        ),
-      },
-      {
-        key: 'deeplink',
-        label: (
-          <Typography
-            variant="meta"
-            tone="muted"
-            as="div"
-            style={{ minWidth: 100, fontSize: 12 }}
-          >
-            Deeplink
           </Typography>
         ),
       },
@@ -1062,6 +1056,20 @@ export function AnalyticsPage() {
         ),
       },
       {
+        key: 'transactions',
+        label: (
+          <Typography
+            variant="meta"
+            tone="muted"
+            as="div"
+            style={{ fontSize: 12 }}
+            className={s.alignRight}
+          >
+            Transactions
+          </Typography>
+        ),
+      },
+      {
         key: 'revenue',
         label: (
           <Typography
@@ -1096,19 +1104,9 @@ export function AnalyticsPage() {
   const deeplinkRows = useMemo(() => {
     return sortedDeeplinkRows.map((item) => ({
       ref: (
-        <Typography variant="body" as="span">
-          {item.ref || '—'}
-        </Typography>
-      ),
-      deeplink: (
         <Tooltip content={item.deeplink}>
-          <Typography
-            variant="caption"
-            tone="muted"
-            as="span"
-            className={s.deeplinkCell}
-          >
-            {item.deeplink || '—'}
+          <Typography variant="body" as="span">
+            {item.ref || '—'}
           </Typography>
         </Tooltip>
       ),
@@ -1171,6 +1169,18 @@ export function AnalyticsPage() {
           style={{ fontSize: 14 }}
         >
           {Number.isFinite(item.purchased) ? formatCount(item.purchased) : '—'}
+        </Typography>
+      ),
+      transactions: (
+        <Typography
+          variant="body"
+          as="span"
+          className={s.alignRight}
+          style={{ fontSize: 14 }}
+        >
+          {Number.isFinite(item.transactions)
+            ? formatCount(item.transactions)
+            : '—'}
         </Typography>
       ),
       revenue: (
@@ -1344,14 +1354,14 @@ export function AnalyticsPage() {
 
               <Section title="Totals">
                 {isDeeplinksLoading ? (
-                  <Grid columns={6} gap={16}>
-                    {Array.from({ length: 6 }).map((_, index) => (
+                  <Grid columns={7} gap={16}>
+                    {Array.from({ length: 7 }).map((_, index) => (
                       <Skeleton key={index} height={88} />
                     ))}
                   </Grid>
                 ) : (
                   <>
-                    <Grid columns={6} gap={16}>
+                    <Grid columns={7} gap={16}>
                       <Card className={s.kpiCard} padding="md">
                         <Typography variant="meta" tone="muted">
                           Visits
@@ -1389,6 +1399,16 @@ export function AnalyticsPage() {
                         <Typography variant="h3">
                           {deeplinkTotals
                             ? formatCount(deeplinkTotals.purchased)
+                            : '—'}
+                        </Typography>
+                      </Card>
+                      <Card className={s.kpiCard} padding="md">
+                        <Typography variant="meta" tone="muted">
+                          Transactions
+                        </Typography>
+                        <Typography variant="h3">
+                          {deeplinkTotals
+                            ? formatCount(deeplinkTotals.transactions)
                             : '—'}
                         </Typography>
                       </Card>
