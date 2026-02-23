@@ -184,7 +184,7 @@ const PAYMENTS_METRICS: AnalyticsMetricDefinition[] = [
   },
   {
     key: 'totalTransactions',
-    label: 'Total transactions',
+    label: 'Transactions',
     description: 'Number of payments in month.',
     format: 'count',
     section: 'payments',

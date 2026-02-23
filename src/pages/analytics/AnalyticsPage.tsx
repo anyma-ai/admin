@@ -224,8 +224,7 @@ export function AnalyticsPage() {
       ? rawSection
       : 'main';
   const isDeeplinksSection = section === 'deeplinks';
-  const usesCurrentMonthDefault =
-    section === 'main' || section === 'payments';
+  const usesCurrentMonthDefault = section === 'main' || section === 'payments';
   const fallbackRange = useMemo(() => {
     const end = usesCurrentMonthDefault
       ? getCurrentMonthId()
@@ -699,7 +698,7 @@ export function AnalyticsPage() {
             style={{ fontSize: 12 }}
             className={s.alignRight}
           >
-            Paying users
+            Customers
           </Typography>
         ),
       },
@@ -726,7 +725,7 @@ export function AnalyticsPage() {
     return entries.map((item) => ({
       name: (
         <Typography variant="body" as="span" className={s.breakdownName}>
-          {item.name || 'Unknown'}
+          {item.name || item.id || 'Unknown'}
         </Typography>
       ),
       activeUsers: (
