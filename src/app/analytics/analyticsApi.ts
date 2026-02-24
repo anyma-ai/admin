@@ -26,6 +26,17 @@ export type AnalyticsMetricsResponse = {
   metrics: AnalyticsMetricSeries[];
 };
 
+export type DailyAnalyticsItem = {
+  day: string;
+  unique: number;
+  total: number;
+  customers: number;
+  revenue: number;
+  conversion: number;
+  arpu: number;
+  arpc: number;
+};
+
 export type PaymentsConversionGroupBy = 'character' | 'scenario' | 'deeplink';
 export type PaymentsRevenueGroupBy = 'character' | 'scenario' | 'deeplink';
 
@@ -95,6 +106,22 @@ export async function getAnalyticsMetrics(params: {
   }
 
   return (await res.json()) as AnalyticsMetricsResponse;
+}
+
+export async function getAnalyticsDaily(params: {
+  startDate: string;
+  endDate: string;
+}) {
+  const query = new URLSearchParams();
+  query.set('startDate', params.startDate);
+  query.set('endDate', params.endDate);
+
+  const res = await apiFetch(`/admin/analytics/daily?${query.toString()}`);
+  if (!res.ok) {
+    throw await buildApiError(res, 'Unable to load daily analytics.');
+  }
+
+  return (await res.json()) as DailyAnalyticsItem[];
 }
 
 export async function getPaymentsConversionBreakdown(params: {

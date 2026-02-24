@@ -1,4 +1,9 @@
-export type AnalyticsSection = 'main' | 'payments' | 'technical' | 'deeplinks';
+export type AnalyticsSection =
+  | 'main'
+  | 'payments'
+  | 'technical'
+  | 'deeplinks'
+  | 'daily';
 
 export type AnalyticsMetricKey =
   | 'bounceRate'
@@ -283,6 +288,13 @@ const SECTIONS: AnalyticsSectionConfig[] = [
     defaultMetric: 'conversionRate',
   },
   {
+    key: 'daily',
+    label: 'Daily',
+    available: true,
+    metrics: [],
+    defaultMetric: null,
+  },
+  {
     key: 'deeplinks',
     label: 'Deeplinks',
     available: true,
@@ -325,7 +337,8 @@ export function isValidSection(
     value === 'main' ||
     value === 'payments' ||
     value === 'technical' ||
-    value === 'deeplinks'
+    value === 'deeplinks' ||
+    value === 'daily'
   );
 }
 

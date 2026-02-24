@@ -1,4 +1,5 @@
 export {
+  useAnalyticsDaily,
   useAnalyticsDeeplinks,
   useAnalyticsMainRange,
   useAnalyticsMetrics,
@@ -6,6 +7,7 @@ export {
   usePaymentsRevenueBreakdown,
 } from './queries';
 export type {
+  DailyAnalyticsItem,
   DeeplinkAnalyticsItem,
   AnalyticsMainRangeResponse,
   AnalyticsMainRow,

@@ -29,6 +29,7 @@ import {
   normalizeRange,
   type PaymentsConversionGroupBy,
   type PaymentsRevenueGroupBy,
+  useAnalyticsDaily,
   useAnalyticsDeeplinks,
   useAnalyticsMainRange,
   useAnalyticsMetrics,
@@ -74,10 +75,25 @@ type QueryUpdate = {
   characterId?: string;
   scenarioId?: string;
   sort?: string;
+  dailyMetric?: string;
 };
 
 type ChartDatum = {
   month: string;
+  value: number;
+};
+
+type DailyMetricKey =
+  | 'total'
+  | 'unique'
+  | 'customers'
+  | 'revenue'
+  | 'conversion'
+  | 'arpu'
+  | 'arpc';
+
+type DailyChartDatum = {
+  day: string;
   value: number;
 };
 
@@ -92,6 +108,7 @@ type DeeplinkSortKey =
 
 const MAX_RANGE_MONTHS = 24;
 const DEFAULT_DEEPLINK_RANGE_DAYS = 30;
+const DEFAULT_DAILY_RANGE_DAYS = 30;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function useElementWidth<T extends HTMLElement>() {
@@ -184,6 +201,16 @@ function formatDeeplinkConversion(value: number | null | undefined) {
   return `${formatCount(value, 1)}%`;
 }
 
+function formatDayLabel(value: string, variant: 'short' | 'long' = 'short') {
+  if (!ISO_DATE_PATTERN.test(value)) return value;
+  const date = parseUtcDateId(value);
+  const options: Intl.DateTimeFormatOptions =
+    variant === 'short'
+      ? { month: 'short', day: '2-digit', timeZone: 'UTC' }
+      : { month: 'long', day: '2-digit', year: 'numeric', timeZone: 'UTC' };
+  return new Intl.DateTimeFormat(undefined, options).format(date);
+}
+
 function isValidDeeplinkSort(
   value: string | null | undefined,
 ): value is DeeplinkSortKey {
@@ -197,6 +224,62 @@ function isValidDeeplinkSort(
     value === 'conversion'
   );
 }
+
+function isValidDailyMetric(
+  value: string | null | undefined,
+): value is DailyMetricKey {
+  return (
+    value === 'total' ||
+    value === 'unique' ||
+    value === 'customers' ||
+    value === 'revenue' ||
+    value === 'conversion' ||
+    value === 'arpu' ||
+    value === 'arpc'
+  );
+}
+
+const DAILY_METRIC_OPTIONS: Array<{
+  value: DailyMetricKey;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'total',
+    label: 'Total',
+    description: 'Distinct users with at least one chat session in the day.',
+  },
+  {
+    value: 'unique',
+    label: 'Unique',
+    description: 'Users whose first user message happened in the day.',
+  },
+  {
+    value: 'customers',
+    label: 'Customers',
+    description: 'Distinct users with at least one payment in the day.',
+  },
+  {
+    value: 'revenue',
+    label: 'Revenue',
+    description: 'Sum of payment amount for the day, in USD.',
+  },
+  {
+    value: 'conversion',
+    label: 'Conversion',
+    description: 'Customers divided by total users.',
+  },
+  {
+    value: 'arpu',
+    label: 'ARPU',
+    description: 'Revenue divided by total users.',
+  },
+  {
+    value: 'arpc',
+    label: 'ARPC',
+    description: 'Revenue divided by customers.',
+  },
+];
 
 export function AnalyticsPage() {
   const { user } = useAuth();
@@ -212,6 +295,7 @@ export function AnalyticsPage() {
   const rawCharacterId = searchParams.get('characterId');
   const rawScenarioId = searchParams.get('scenarioId');
   const rawSort = searchParams.get('sort');
+  const rawDailyMetric = searchParams.get('dailyMetric');
 
   const [conversionGroupBy, setConversionGroupBy] =
     useState<PaymentsConversionGroupBy>('character');
@@ -224,6 +308,8 @@ export function AnalyticsPage() {
       ? rawSection
       : 'main';
   const isDeeplinksSection = section === 'deeplinks';
+  const isDailySection = section === 'daily';
+  const isMonthlySection = !isDeeplinksSection && !isDailySection;
   const usesCurrentMonthDefault = section === 'main' || section === 'payments';
   const fallbackRange = useMemo(() => {
     const end = usesCurrentMonthDefault
@@ -250,11 +336,15 @@ export function AnalyticsPage() {
   );
   const kpiMonth = isValidMonthId(rawKpi) ? rawKpi : defaultKpiMonth;
 
-  const defaultDeeplinkEnd = useMemo(() => toUtcDateId(new Date()), []);
+  const defaultDateEnd = useMemo(() => toUtcDateId(new Date()), []);
   const defaultDeeplinkStart = useMemo(
     () =>
-      addDaysToDateId(defaultDeeplinkEnd, -(DEFAULT_DEEPLINK_RANGE_DAYS - 1)),
-    [defaultDeeplinkEnd],
+      addDaysToDateId(defaultDateEnd, -(DEFAULT_DEEPLINK_RANGE_DAYS - 1)),
+    [defaultDateEnd],
+  );
+  const defaultDailyStart = useMemo(
+    () => addDaysToDateId(defaultDateEnd, -(DEFAULT_DAILY_RANGE_DAYS - 1)),
+    [defaultDateEnd],
   );
   const { start: deeplinkStart, end: deeplinkEnd } = useMemo(
     () =>
@@ -262,10 +352,23 @@ export function AnalyticsPage() {
         rawStartDate,
         rawEndDate,
         defaultDeeplinkStart,
-        defaultDeeplinkEnd,
+        defaultDateEnd,
       ),
-    [rawStartDate, rawEndDate, defaultDeeplinkStart, defaultDeeplinkEnd],
+    [rawStartDate, rawEndDate, defaultDeeplinkStart, defaultDateEnd],
   );
+  const { start: dailyStart, end: dailyEnd } = useMemo(
+    () =>
+      normalizeDateRange(
+        rawStartDate,
+        rawEndDate,
+        defaultDailyStart,
+        defaultDateEnd,
+      ),
+    [rawStartDate, rawEndDate, defaultDailyStart, defaultDateEnd],
+  );
+  const dailyMetricKey = isValidDailyMetric(rawDailyMetric)
+    ? rawDailyMetric
+    : 'total';
   const deeplinkRef = rawRef ?? '';
   const deeplinkCharacterId = rawCharacterId ?? '';
   const deeplinkScenarioId = rawScenarioId ?? '';
@@ -363,6 +466,14 @@ export function AnalyticsPage() {
         }
       }
 
+      if (update.dailyMetric !== undefined) {
+        if (update.dailyMetric) {
+          next.set('dailyMetric', update.dailyMetric);
+        } else {
+          next.delete('dailyMetric');
+        }
+      }
+
       setSearchParams(next, { replace });
     },
     [searchParams, setSearchParams],
@@ -371,16 +482,23 @@ export function AnalyticsPage() {
   useEffect(() => {
     const updates: QueryUpdate = {};
     if (rawSection !== section) updates.section = section;
-    if (!isDeeplinksSection) {
+    if (isMonthlySection) {
       if (rawStart !== startMonth) updates.start = startMonth;
       if (rawEnd !== endMonth) updates.end = endMonth;
       if (metricKey && rawMetric !== metricKey) updates.metric = metricKey;
       if (!metricKey && rawMetric) updates.metric = '';
       if (rawKpi !== kpiMonth) updates.kpi = kpiMonth;
     } else {
-      if (rawStartDate !== deeplinkStart) updates.startDate = deeplinkStart;
-      if (rawEndDate !== deeplinkEnd) updates.endDate = deeplinkEnd;
-      if (rawSort !== deeplinkSort) updates.sort = deeplinkSort;
+      const nextStart = isDailySection ? dailyStart : deeplinkStart;
+      const nextEnd = isDailySection ? dailyEnd : deeplinkEnd;
+      if (rawStartDate !== nextStart) updates.startDate = nextStart;
+      if (rawEndDate !== nextEnd) updates.endDate = nextEnd;
+      if (isDeeplinksSection && rawSort !== deeplinkSort) {
+        updates.sort = deeplinkSort;
+      }
+      if (isDailySection && rawDailyMetric !== dailyMetricKey) {
+        updates.dailyMetric = dailyMetricKey;
+      }
     }
     if (Object.keys(updates).length > 0) {
       updateSearchParams(updates, true);
@@ -403,6 +521,12 @@ export function AnalyticsPage() {
     deeplinkEnd,
     deeplinkSort,
     isDeeplinksSection,
+    isDailySection,
+    isMonthlySection,
+    dailyStart,
+    dailyEnd,
+    dailyMetricKey,
+    rawDailyMetric,
     updateSearchParams,
   ]);
 
@@ -425,7 +549,7 @@ export function AnalyticsPage() {
       endMonth,
     },
     {
-      enabled: isSectionAvailable && !isDeeplinksSection,
+      enabled: isSectionAvailable && isMonthlySection,
     },
   );
 
@@ -442,7 +566,7 @@ export function AnalyticsPage() {
     },
     {
       enabled:
-        isSectionAvailable && !isDeeplinksSection && isValidMonthId(kpiMonth),
+        isSectionAvailable && isMonthlySection && isValidMonthId(kpiMonth),
     },
   );
 
@@ -458,7 +582,7 @@ export function AnalyticsPage() {
       endMonth,
     },
     {
-      enabled: isSectionAvailable && !isDeeplinksSection && Boolean(metricKey),
+      enabled: isSectionAvailable && isMonthlySection && Boolean(metricKey),
     },
   );
 
@@ -533,6 +657,21 @@ export function AnalyticsPage() {
         isDeeplinksSection &&
         isValidDateId(deeplinkStart) &&
         isValidDateId(deeplinkEnd),
+    },
+  );
+
+  const {
+    data: dailyData,
+    isLoading: isDailyLoading,
+    error: dailyError,
+  } = useAnalyticsDaily(
+    {
+      startDate: dailyStart,
+      endDate: dailyEnd,
+    },
+    {
+      enabled:
+        isDailySection && isValidDateId(dailyStart) && isValidDateId(dailyEnd),
     },
   );
 
@@ -657,6 +796,32 @@ export function AnalyticsPage() {
   const paymentsRevenueMetric = useMemo(
     () => getMetricDefinition('averagePurchaseValue'),
     [],
+  );
+  const dailyRevenueMetric = useMemo(
+    () => getMetricDefinition('revenue'),
+    [],
+  );
+  const dailyArpuMetric = useMemo(
+    () => getMetricDefinition('averageRevenuePerUser'),
+    [],
+  );
+  const dailyArpcMetric = useMemo(
+    () => getMetricDefinition('averageRevenuePerCustomer'),
+    [],
+  );
+  const dailyMetricOptions = useMemo(
+    () =>
+      DAILY_METRIC_OPTIONS.map((metric) => ({
+        value: metric.value,
+        label: metric.label,
+      })),
+    [],
+  );
+  const dailyMetricMeta = useMemo(
+    () =>
+      DAILY_METRIC_OPTIONS.find((metric) => metric.value === dailyMetricKey) ??
+      DAILY_METRIC_OPTIONS[0],
+    [dailyMetricKey],
   );
 
   const conversionColumns = useMemo(
@@ -1218,6 +1383,300 @@ export function AnalyticsPage() {
     }));
   }, [sortedDeeplinkRows, paymentsRevenueMetric]);
 
+  const dailyTotals = useMemo(() => {
+    const entries = dailyData ?? [];
+    if (!entries.length) return null;
+    const totals = entries.reduce(
+      (acc, item) => {
+        acc.total += Number.isFinite(item.total) ? item.total : 0;
+        acc.unique += Number.isFinite(item.unique) ? item.unique : 0;
+        acc.customers += Number.isFinite(item.customers) ? item.customers : 0;
+        acc.revenue += Number.isFinite(item.revenue) ? item.revenue : 0;
+        return acc;
+      },
+      {
+        total: 0,
+        unique: 0,
+        customers: 0,
+        revenue: 0,
+      },
+    );
+
+    const conversion =
+      totals.total > 0 ? totals.customers / totals.total : null;
+    const arpu = totals.total > 0 ? totals.revenue / totals.total : null;
+    const arpc = totals.customers > 0 ? totals.revenue / totals.customers : null;
+
+    return { ...totals, conversion, arpu, arpc };
+  }, [dailyData]);
+
+  const dailyColumns = useMemo(
+    () => [
+      {
+        key: 'day',
+        label: (
+          <Typography
+            variant="meta"
+            tone="muted"
+            as="div"
+            style={{ minWidth: 90, fontSize: 12 }}
+          >
+            Day
+          </Typography>
+        ),
+      },
+      {
+        key: 'total',
+        label: (
+          <Tooltip content="Distinct users with at least one chat session in the day.">
+            <Typography
+              variant="meta"
+              as="span"
+              tone="muted"
+              className={cn(s.tableHeader, [s.alignRight])}
+            >
+              Total
+            </Typography>
+          </Tooltip>
+        ),
+      },
+      {
+        key: 'unique',
+        label: (
+          <Tooltip content="Users whose first user message happened in the day.">
+            <Typography
+              variant="meta"
+              as="span"
+              tone="muted"
+              className={cn(s.tableHeader, [s.alignRight])}
+            >
+              Unique
+            </Typography>
+          </Tooltip>
+        ),
+      },
+      {
+        key: 'customers',
+        label: (
+          <Tooltip content="Distinct users with at least one payment in the day.">
+            <Typography
+              variant="meta"
+              as="span"
+              tone="muted"
+              className={cn(s.tableHeader, [s.alignRight])}
+            >
+              Customers
+            </Typography>
+          </Tooltip>
+        ),
+      },
+      {
+        key: 'revenue',
+        label: (
+          <Tooltip content="Sum of payment amount for the day, in USD.">
+            <Typography
+              variant="meta"
+              as="span"
+              tone="muted"
+              className={cn(s.tableHeader, [s.alignRight])}
+            >
+              Revenue
+            </Typography>
+          </Tooltip>
+        ),
+      },
+      {
+        key: 'conversion',
+        label: (
+          <Tooltip content="Customers divided by total users.">
+            <Typography
+              variant="meta"
+              as="span"
+              tone="muted"
+              className={cn(s.tableHeader, [s.alignRight])}
+            >
+              Conversion
+            </Typography>
+          </Tooltip>
+        ),
+      },
+      {
+        key: 'arpu',
+        label: (
+          <Tooltip content="Revenue divided by total users.">
+            <Typography
+              variant="meta"
+              as="span"
+              tone="muted"
+              className={cn(s.tableHeader, [s.alignRight])}
+            >
+              ARPU
+            </Typography>
+          </Tooltip>
+        ),
+      },
+      {
+        key: 'arpc',
+        label: (
+          <Tooltip content="Revenue divided by customers.">
+            <Typography
+              variant="meta"
+              as="span"
+              tone="muted"
+              className={cn(s.tableHeader, [s.alignRight])}
+            >
+              ARPC
+            </Typography>
+          </Tooltip>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const dailyRows = useMemo(() => {
+    const entries = dailyData ?? [];
+    return [...entries]
+      .sort((a, b) => String(b.day).localeCompare(String(a.day)))
+      .map((item) => ({
+        day: (
+          <Typography variant="body" as="span">
+            {item.day ? formatDayLabel(item.day, 'long') : '—'}
+          </Typography>
+        ),
+        total: (
+          <Typography
+            variant="body"
+            as="span"
+            className={s.alignRight}
+            style={{ fontSize: 14 }}
+          >
+            {Number.isFinite(item.total) ? formatCount(item.total) : '—'}
+          </Typography>
+        ),
+        unique: (
+          <Typography
+            variant="body"
+            as="span"
+            className={s.alignRight}
+            style={{ fontSize: 14 }}
+          >
+            {Number.isFinite(item.unique) ? formatCount(item.unique) : '—'}
+          </Typography>
+        ),
+        customers: (
+          <Typography
+            variant="body"
+            as="span"
+            className={s.alignRight}
+            style={{ fontSize: 14 }}
+          >
+            {Number.isFinite(item.customers)
+              ? formatCount(item.customers)
+              : '—'}
+          </Typography>
+        ),
+        revenue: (
+          <Typography
+            variant="body"
+            as="span"
+            className={s.alignRight}
+            style={{ fontSize: 14 }}
+          >
+            {dailyRevenueMetric && Number.isFinite(item.revenue)
+              ? formatMetricValue(dailyRevenueMetric, item.revenue, 'table')
+              : '—'}
+          </Typography>
+        ),
+        conversion: (
+          <Typography
+            variant="body"
+            as="span"
+            className={s.alignRight}
+            style={{ fontSize: 14 }}
+          >
+            {conversionMetric && Number.isFinite(item.conversion)
+              ? formatMetricValue(conversionMetric, item.conversion, 'table')
+              : '—'}
+          </Typography>
+        ),
+        arpu: (
+          <Typography
+            variant="body"
+            as="span"
+            className={s.alignRight}
+            style={{ fontSize: 14 }}
+          >
+            {dailyArpuMetric && Number.isFinite(item.arpu)
+              ? formatMetricValue(dailyArpuMetric, item.arpu, 'table')
+              : '—'}
+          </Typography>
+        ),
+        arpc: (
+          <Typography
+            variant="body"
+            as="span"
+            className={s.alignRight}
+            style={{ fontSize: 14 }}
+          >
+            {dailyArpcMetric && Number.isFinite(item.arpc)
+              ? formatMetricValue(dailyArpcMetric, item.arpc, 'table')
+              : '—'}
+          </Typography>
+        ),
+      }));
+  }, [
+    dailyData,
+    conversionMetric,
+    dailyRevenueMetric,
+    dailyArpuMetric,
+    dailyArpcMetric,
+  ]);
+
+  const dailyChartData = useMemo(() => {
+    const entries = dailyData ?? [];
+    return [...entries]
+      .sort((a, b) => String(a.day).localeCompare(String(b.day)))
+      .map((item) => ({
+        day: item.day,
+        value: item[dailyMetricKey],
+      }))
+      .filter((item) => Number.isFinite(item.value));
+  }, [dailyData, dailyMetricKey]);
+
+  const formatDailyChartValue = useCallback(
+    (value: number, variant: 'chart' | 'tooltip') => {
+      if (!Number.isFinite(value)) return '—';
+      switch (dailyMetricKey) {
+        case 'revenue':
+          return dailyRevenueMetric
+            ? formatMetricValue(dailyRevenueMetric, value, variant)
+            : formatCount(value);
+        case 'conversion':
+          return conversionMetric
+            ? formatMetricValue(conversionMetric, value, variant)
+            : formatCount(value, 2);
+        case 'arpu':
+          return dailyArpuMetric
+            ? formatMetricValue(dailyArpuMetric, value, variant)
+            : formatCount(value, 2);
+        case 'arpc':
+          return dailyArpcMetric
+            ? formatMetricValue(dailyArpcMetric, value, variant)
+            : formatCount(value, 2);
+        default:
+          return formatCount(value);
+      }
+    },
+    [
+      dailyMetricKey,
+      dailyRevenueMetric,
+      conversionMetric,
+      dailyArpuMetric,
+      dailyArpcMetric,
+    ],
+  );
+
   const conversionGroupOptions = useMemo(
     () => [
       { value: 'character', label: 'Character' },
@@ -1469,6 +1928,265 @@ export function AnalyticsPage() {
                   ) : deeplinkRows.length ? (
                     <div className={s.tableWrap}>
                       <Table columns={deeplinkColumns} rows={deeplinkRows} />
+                    </div>
+                  ) : (
+                    <EmptyState
+                      title="No data for this period"
+                      description="Try adjusting the filters."
+                    />
+                  )}
+                </Card>
+              </Section>
+            </>
+          ) : isDailySection ? (
+            <>
+              {dailyError ? (
+                <Alert
+                  tone="danger"
+                  title="Unable to load daily analytics"
+                  description="Please retry or adjust the filters."
+                />
+              ) : null}
+
+              <div className={s.filters}>
+                <FormRow columns={2}>
+                  <Field label="Start date" className={s.filterField}>
+                    <Input
+                      type="date"
+                      size="sm"
+                      value={dailyStart}
+                      onChange={(event) =>
+                        updateSearchParams({ startDate: event.target.value })
+                      }
+                      fullWidth
+                    />
+                  </Field>
+                  <Field label="End date" className={s.filterField}>
+                    <Input
+                      type="date"
+                      size="sm"
+                      value={dailyEnd}
+                      onChange={(event) =>
+                        updateSearchParams({ endDate: event.target.value })
+                      }
+                      fullWidth
+                    />
+                  </Field>
+                </FormRow>
+                <Typography
+                  variant="caption"
+                  tone="muted"
+                  className={s.filterNote}
+                >
+                  UTC dates. Revenue in USD. Current day is partial.
+                </Typography>
+              </div>
+
+              <Section title="Totals">
+                {isDailyLoading ? (
+                  <Grid columns={7} gap={16}>
+                    {Array.from({ length: 7 }).map((_, index) => (
+                      <Skeleton key={index} height={88} />
+                    ))}
+                  </Grid>
+                ) : (
+                  <>
+                    <Grid columns={7} gap={16}>
+                      <Card className={s.kpiCard} padding="md">
+                        <Typography variant="meta" tone="muted">
+                          Total
+                        </Typography>
+                        <Typography variant="h3">
+                          {dailyTotals
+                            ? formatCount(dailyTotals.total)
+                            : '—'}
+                        </Typography>
+                      </Card>
+                      <Card className={s.kpiCard} padding="md">
+                        <Typography variant="meta" tone="muted">
+                          Unique
+                        </Typography>
+                        <Typography variant="h3">
+                          {dailyTotals
+                            ? formatCount(dailyTotals.unique)
+                            : '—'}
+                        </Typography>
+                      </Card>
+                      <Card className={s.kpiCard} padding="md">
+                        <Typography variant="meta" tone="muted">
+                          Customers
+                        </Typography>
+                        <Typography variant="h3">
+                          {dailyTotals
+                            ? formatCount(dailyTotals.customers)
+                            : '—'}
+                        </Typography>
+                      </Card>
+                      <Card className={s.kpiCard} padding="md">
+                        <Typography variant="meta" tone="muted">
+                          Revenue
+                        </Typography>
+                        <Typography variant="h3">
+                          {dailyTotals && dailyRevenueMetric
+                            ? formatMetricValue(
+                                dailyRevenueMetric,
+                                dailyTotals.revenue,
+                                'card',
+                              )
+                            : '—'}
+                        </Typography>
+                      </Card>
+                      <Card className={s.kpiCard} padding="md">
+                        <Typography variant="meta" tone="muted">
+                          Conversion
+                        </Typography>
+                        <Typography variant="h3">
+                          {dailyTotals && conversionMetric
+                            ? formatMetricValue(
+                                conversionMetric,
+                                dailyTotals.conversion,
+                                'card',
+                              )
+                            : '—'}
+                        </Typography>
+                      </Card>
+                      <Card className={s.kpiCard} padding="md">
+                        <Typography variant="meta" tone="muted">
+                          ARPU
+                        </Typography>
+                        <Typography variant="h3">
+                          {dailyTotals && dailyArpuMetric
+                            ? formatMetricValue(
+                                dailyArpuMetric,
+                                dailyTotals.arpu,
+                                'card',
+                              )
+                            : '—'}
+                        </Typography>
+                      </Card>
+                      <Card className={s.kpiCard} padding="md">
+                        <Typography variant="meta" tone="muted">
+                          ARPC
+                        </Typography>
+                        <Typography variant="h3">
+                          {dailyTotals && dailyArpcMetric
+                            ? formatMetricValue(
+                                dailyArpcMetric,
+                                dailyTotals.arpc,
+                                'card',
+                              )
+                            : '—'}
+                        </Typography>
+                      </Card>
+                    </Grid>
+                    <Typography
+                      variant="caption"
+                      tone="muted"
+                      className={s.totalsNote}
+                    >
+                      Totals are sums across rows.
+                    </Typography>
+                  </>
+                )}
+              </Section>
+
+              <Section
+                title="Trend"
+                description={dailyMetricMeta?.description}
+                actions={
+                  <Field
+                    label="Metric"
+                    layout="inline"
+                    className={s.breakdownField}
+                  >
+                    <Select
+                      options={dailyMetricOptions}
+                      value={dailyMetricKey}
+                      onChange={(value) =>
+                        updateSearchParams({ dailyMetric: value })
+                      }
+                      size="sm"
+                      fitContent
+                    />
+                  </Field>
+                }
+              >
+                <Card className={s.panel} padding="md">
+                  {isDailyLoading ? (
+                    <Skeleton height={260} />
+                  ) : dailyChartData.length ? (
+                    <div ref={chartRef} className={s.chart}>
+                      {chartWidth > 0 ? (
+                        <XYChart
+                          width={chartWidth}
+                          height={260}
+                          xScale={{ type: 'point' }}
+                          yScale={{ type: 'linear', nice: true }}
+                        >
+                          <AnimatedGrid columns={false} numTicks={4} />
+                          <AnimatedAxis
+                            orientation="bottom"
+                            tickFormat={(value) =>
+                              formatDayLabel(String(value), 'short')
+                            }
+                            numTicks={Math.min(6, dailyChartData.length)}
+                          />
+                          <AnimatedAxis
+                            orientation="left"
+                            numTicks={4}
+                            tickFormat={(value) =>
+                              formatDailyChartValue(Number(value), 'chart')
+                            }
+                          />
+                          <AnimatedLineSeries
+                            dataKey={dailyMetricMeta?.label ?? 'Daily'}
+                            data={dailyChartData}
+                            xAccessor={(datum) => datum.day}
+                            yAccessor={(datum) => datum.value}
+                          />
+                          <ChartTooltip
+                            showVerticalCrosshair
+                            showSeriesGlyphs
+                            renderTooltip={({ tooltipData }) => {
+                              const nearest = tooltipData?.nearestDatum;
+                              if (!nearest) return null;
+                              const datum = nearest.datum as DailyChartDatum;
+                              return (
+                                <div className={s.chartTooltip}>
+                                  <Typography variant="meta" as="div">
+                                    {formatDayLabel(datum.day, 'long')}
+                                  </Typography>
+                                  <Typography variant="body" as="div">
+                                    {formatDailyChartValue(
+                                      datum.value,
+                                      'tooltip',
+                                    )}
+                                  </Typography>
+                                </div>
+                              );
+                            }}
+                          />
+                        </XYChart>
+                      ) : (
+                        <Skeleton height={260} />
+                      )}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      title="No data for this period"
+                      description="Try adjusting the date range."
+                    />
+                  )}
+                </Card>
+              </Section>
+
+              <Section title="Daily">
+                <Card className={s.panel} padding="md">
+                  {isDailyLoading ? (
+                    <Skeleton height={240} />
+                  ) : dailyRows.length ? (
+                    <div className={s.tableWrap}>
+                      <Table columns={dailyColumns} rows={dailyRows} />
                     </div>
                   ) : (
                     <EmptyState

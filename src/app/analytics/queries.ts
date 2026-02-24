@@ -2,11 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 
 import {
   getAnalyticsDeeplinks,
+  getAnalyticsDaily,
   getAnalyticsMainRange,
   getAnalyticsMetrics,
   getPaymentsConversionBreakdown,
   getPaymentsRevenueBreakdown,
   type DeeplinkAnalyticsItem,
+  type DailyAnalyticsItem,
   type AnalyticsMainRangeResponse,
   type AnalyticsMetricsResponse,
   type PaymentsConversionBreakdownItem,
@@ -43,6 +45,8 @@ const analyticsKeys = {
     characterId?: string;
     scenarioId?: string;
   }) => ['analytics', 'deeplinks', params] as const,
+  daily: (params: { startDate: string; endDate: string }) =>
+    ['analytics', 'daily', params] as const,
 };
 
 type AnalyticsQueryOptions<T> = {
@@ -127,6 +131,19 @@ export function useAnalyticsDeeplinks(
   return useQuery({
     queryKey: analyticsKeys.deeplinks(params),
     queryFn: () => getAnalyticsDeeplinks(params),
+    placeholderData: options.placeholderData ?? ((previous) => previous),
+    staleTime: options.staleTime ?? DEFAULT_STALE_TIME,
+    enabled: options.enabled ?? true,
+  });
+}
+
+export function useAnalyticsDaily(
+  params: { startDate: string; endDate: string },
+  options: AnalyticsQueryOptions<DailyAnalyticsItem[]> = {},
+) {
+  return useQuery({
+    queryKey: analyticsKeys.daily(params),
+    queryFn: () => getAnalyticsDaily(params),
     placeholderData: options.placeholderData ?? ((previous) => previous),
     staleTime: options.staleTime ?? DEFAULT_STALE_TIME,
     enabled: options.enabled ?? true,
