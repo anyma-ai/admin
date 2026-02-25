@@ -1,5 +1,6 @@
 import { apiFetch } from '@/app/api';
 import { buildApiError } from '@/app/api/apiErrors';
+
 import type { AnalyticsMetricKey, AnalyticsSection } from './metricRegistry';
 
 export type AnalyticsMainRow = {
@@ -64,7 +65,7 @@ export type DeeplinkAnalyticsItem = {
   total: number;
   unique: number;
   visits: number;
-  purchased: number;
+  customers: number;
   transactions: number;
   revenue: number;
   conversion: number;
@@ -136,10 +137,7 @@ export async function getPaymentsConversionBreakdown(params: {
     `/admin/analytics/payments/breakdown/conversion?${query.toString()}`,
   );
   if (!res.ok) {
-    throw await buildApiError(
-      res,
-      'Unable to load conversion breakdown.',
-    );
+    throw await buildApiError(res, 'Unable to load conversion breakdown.');
   }
 
   return (await res.json()) as PaymentsConversionBreakdownItem[];

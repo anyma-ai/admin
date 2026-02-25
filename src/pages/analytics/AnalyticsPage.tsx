@@ -1106,7 +1106,7 @@ export function AnalyticsPage() {
         acc.total += Number.isFinite(item.total) ? item.total : 0;
         acc.unique += Number.isFinite(item.unique) ? item.unique : 0;
         acc.visits += Number.isFinite(item.visits) ? item.visits : 0;
-        acc.purchased += Number.isFinite(item.purchased) ? item.purchased : 0;
+        acc.customers += Number.isFinite(item.customers) ? item.customers : 0;
         acc.transactions += Number.isFinite(item.transactions)
           ? item.transactions
           : 0;
@@ -1117,14 +1117,14 @@ export function AnalyticsPage() {
         total: 0,
         unique: 0,
         visits: 0,
-        purchased: 0,
+        customers: 0,
         transactions: 0,
         revenue: 0,
       },
     );
 
     const conversion =
-      totals.total > 0 ? (totals.purchased / totals.total) * 100 : null;
+      totals.total > 0 ? (totals.customers / totals.total) * 100 : null;
 
     return { ...totals, conversion };
   }, [deeplinkData]);
@@ -1332,14 +1332,14 @@ export function AnalyticsPage() {
           {Number.isFinite(item.total) ? formatCount(item.total) : '—'}
         </Typography>
       ),
-      purchased: (
+      customers: (
         <Typography
           variant="body"
           as="span"
           className={s.alignRight}
           style={{ fontSize: 14 }}
         >
-          {Number.isFinite(item.purchased) ? formatCount(item.purchased) : '—'}
+          {Number.isFinite(item.customers) ? formatCount(item.customers) : '—'}
         </Typography>
       ),
       transactions: (
@@ -1866,7 +1866,7 @@ export function AnalyticsPage() {
                         </Typography>
                         <Typography variant="h3">
                           {deeplinkTotals
-                            ? formatCount(deeplinkTotals.purchased)
+                            ? formatCount(deeplinkTotals.customers)
                             : '—'}
                         </Typography>
                       </Card>
