@@ -31,8 +31,10 @@ export type CharacterUpdateDto = {
   loraId: string;
   gender: string;
   isActive: boolean;
+  isFeatured?: boolean;
   description: string;
   avatarId: string;
+  promoImgId?: string;
 };
 
 export type CharacterCreateDto = {
@@ -42,6 +44,8 @@ export type CharacterCreateDto = {
   gender: string;
   description: string;
   avatarId: string;
+  isFeatured?: boolean;
+  promoImgId?: string;
 };
 
 export type ScenarioCreateDto = {
@@ -49,6 +53,11 @@ export type ScenarioCreateDto = {
   emoji: string;
   slug?: string;
   description: string;
+  isActive?: boolean;
+  shortDescription?: string;
+  isNew?: boolean;
+  promoImgId?: string;
+  promoImgHorizontalId?: string;
   personality: string;
   messagingStyle: string;
   appearance: string;
