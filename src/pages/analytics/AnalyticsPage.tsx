@@ -1699,7 +1699,7 @@ export function AnalyticsPage() {
   );
 
   const monthlyExportHeaders = useMemo(
-    () => ['month', ...sectionConfig.metrics.map((metric) => metric.key)],
+    () => ['Month', ...sectionConfig.metrics.map((metric) => metric.label)],
     [sectionConfig.metrics],
   );
   const monthlyExportRows = useMemo(() => {
@@ -1736,9 +1736,7 @@ export function AnalyticsPage() {
     return sortedDeeplinkRows.map((item) => [
       item.ref ?? '',
       item.deeplink,
-      item.character?.id ?? '',
       item.character?.name ?? '',
-      item.scenario?.id ?? '',
       item.scenario?.name ?? '',
       item.scenario?.slug ?? '',
       Number.isFinite(item.visits) ? item.visits : null,
@@ -1767,20 +1765,18 @@ export function AnalyticsPage() {
         downloadCsvFile(
           {
             headers: [
-              'ref',
-              'deeplink',
-              'characterId',
-              'characterName',
-              'scenarioId',
-              'scenarioName',
-              'scenarioSlug',
-              'visits',
-              'unique',
-              'total',
-              'customers',
-              'transactions',
-              'revenue',
-              'conversion',
+              'Ref',
+              'Deeplink',
+              'Character',
+              'Scenario',
+              'Scenario slug',
+              'Visits',
+              'Unique',
+              'Total',
+              'Customers',
+              'Transactions',
+              'Revenue (USD)',
+              'Conversion rate',
             ],
             rows: deeplinkExportRows,
           },
@@ -1794,14 +1790,14 @@ export function AnalyticsPage() {
         downloadCsvFile(
           {
             headers: [
-              'day',
-              'total',
-              'unique',
-              'customers',
-              'revenue',
-              'conversion',
-              'arpu',
-              'arpc',
+              'Day',
+              'Total',
+              'Unique',
+              'Customers',
+              'Revenue (USD)',
+              'Conversion rate',
+              'ARPU (USD)',
+              'ARPC (USD)',
             ],
             rows: dailyExportRows,
           },
