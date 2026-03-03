@@ -47,6 +47,7 @@ export enum DatasetStyle {
 export interface IDataset {
   id: string;
   name: string;
+  characterName: string;
   style: DatasetStyle;
   description: string;
   resolution: DatasetResolution;
@@ -74,10 +75,12 @@ export interface IDatasetItem {
 export interface IDatasetDetails extends IDataset {
   items: IDatasetItem[];
   refImgs: IFile[];
+  config?: IFile | null;
 }
 
 export interface CreateDatasetDto {
   name: string;
+  characterName: string;
   description: string;
   itemsCount: number;
   loraTriggerWord: string;

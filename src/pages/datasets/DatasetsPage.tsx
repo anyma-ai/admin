@@ -48,6 +48,7 @@ type QueryUpdate = {
 
 type CreateDatasetValues = {
   name: string;
+  characterName: string;
   description: string;
   itemsCount: string;
   loraTriggerWord: string;
@@ -96,6 +97,7 @@ const MAX_REF_IMAGES = 5;
 
 const EMPTY_CREATE_VALUES: CreateDatasetValues = {
   name: '',
+  characterName: '',
   description: '',
   itemsCount: String(MIN_ITEMS_COUNT),
   loraTriggerWord: '',
@@ -322,6 +324,7 @@ export function DatasetsPage() {
   const columns = useMemo(
     () => [
       { key: 'dataset', label: 'Dataset' },
+      { key: 'character', label: 'Character' },
       { key: 'style', label: 'Style' },
       { key: 'resolution', label: 'Resolution' },
       { key: 'items', label: <span className={s.alignRight}>Items</span> },
@@ -343,6 +346,11 @@ export function DatasetsPage() {
               {dataset.loraTriggerWord || '-'}
             </Typography>
           </div>
+        ),
+        character: (
+          <Typography variant="body" tone="muted">
+            {dataset.characterName || '-'}
+          </Typography>
         ),
         style: (
           <Typography variant="body" tone="muted">
@@ -377,6 +385,7 @@ export function DatasetsPage() {
             <Skeleton width={120} height={10} />
           </div>
         ),
+        character: <Skeleton width={140} height={12} />,
         style: <Skeleton width={90} height={12} />,
         resolution: <Skeleton width={90} height={12} />,
         items: (
@@ -412,6 +421,7 @@ export function DatasetsPage() {
     if (!createShowErrors) return {};
     const errors: {
       name?: string;
+      characterName?: string;
       description?: string;
       itemsCount?: string;
       loraTriggerWord?: string;
@@ -422,6 +432,10 @@ export function DatasetsPage() {
 
     if (!createValues.name.trim()) {
       errors.name = 'Enter a name.';
+    }
+
+    if (!createValues.characterName.trim()) {
+      errors.characterName = 'Enter a character name.';
     }
 
     if (!createValues.description.trim()) {
@@ -459,6 +473,7 @@ export function DatasetsPage() {
   }, [
     createShowErrors,
     createValues.name,
+    createValues.characterName,
     createValues.description,
     parsedItemsCount,
     createValues.loraTriggerWord,
@@ -471,6 +486,7 @@ export function DatasetsPage() {
     () =>
       Boolean(
         createValues.name.trim() &&
+        createValues.characterName.trim() &&
         createValues.description.trim() &&
         createValues.loraTriggerWord.trim() &&
         isDatasetStyle(createValues.style) &&
@@ -483,6 +499,7 @@ export function DatasetsPage() {
       ),
     [
       createValues.name,
+      createValues.characterName,
       createValues.description,
       createValues.loraTriggerWord,
       createValues.style,
@@ -571,6 +588,9 @@ export function DatasetsPage() {
   const handleCreate = async () => {
     const errors = {
       name: createValues.name.trim() ? undefined : 'Enter a name.',
+      characterName: createValues.characterName.trim()
+        ? undefined
+        : 'Enter a character name.',
       description: createValues.description.trim()
         ? undefined
         : 'Enter a description.',
@@ -596,6 +616,7 @@ export function DatasetsPage() {
 
     if (
       errors.name ||
+      errors.characterName ||
       errors.description ||
       errors.itemsCount ||
       errors.loraTriggerWord ||
@@ -609,6 +630,7 @@ export function DatasetsPage() {
 
     const result = await createMutation.mutateAsync({
       name: createValues.name.trim(),
+      characterName: createValues.characterName.trim(),
       description: createValues.description.trim(),
       itemsCount: parsedItemsCount!,
       loraTriggerWord: createValues.loraTriggerWord.trim(),
@@ -816,6 +838,26 @@ export function DatasetsPage() {
               />
             </Field>
           </FormRow>
+
+          <Field
+            label="Character name"
+            labelFor="dataset-create-character-name"
+            error={createValidationErrors.characterName}
+          >
+            <Input
+              id="dataset-create-character-name"
+              size="sm"
+              value={createValues.characterName}
+              onChange={(event) =>
+                setCreateValues((prev) => ({
+                  ...prev,
+                  characterName: event.target.value,
+                }))
+              }
+              placeholder="Character name"
+              fullWidth
+            />
+          </Field>
 
           <FormRow columns={2}>
             <Field

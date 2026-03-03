@@ -27,6 +27,8 @@ import {
   Stack,
   Typography,
 } from '@/atoms';
+import { getFileSignedUrl } from '@/app/files/filesApi';
+import { notifyError } from '@/app/toast';
 import type { DatasetItemPrompt, IDatasetItem } from '@/common/types';
 import { DatasetItemStatus } from '@/common/types';
 import { ConfirmModal } from '@/components/molecules/confirm-modal/ConfirmModal';
@@ -111,6 +113,7 @@ export function DatasetDetailsPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editShowErrors, setEditShowErrors] = useState(false);
   const [editName, setEditName] = useState('');
+  const [isConfigDownloading, setIsConfigDownloading] = useState(false);
   const [regeneratingItemId, setRegeneratingItemId] = useState<string | null>(
     null,
   );
@@ -197,6 +200,41 @@ export function DatasetDetailsPage() {
     await downloadZipMutation.mutateAsync({ id: datasetId, fallbackName });
   };
 
+  const handleDownloadConfig = async () => {
+    if (!data?.config?.id || isConfigDownloading) return;
+    setIsConfigDownloading(true);
+    try {
+      const signedUrlResponse = await getFileSignedUrl(data.config.id);
+      const signedUrl =
+        typeof signedUrlResponse === 'string'
+          ? signedUrlResponse
+          : signedUrlResponse.url ?? signedUrlResponse.signedUrl;
+      if (!signedUrl) {
+        throw new Error('Unable to download config.');
+      }
+      const downloadRes = await fetch(signedUrl);
+      if (!downloadRes.ok) {
+        throw new Error('Unable to download config.');
+      }
+      const blob = await downloadRes.blob();
+      const fileName =
+        data.config.name || (data.name ? `${data.name}-config` : 'config');
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      notifyError(error, 'Unable to download config.');
+    } finally {
+      setIsConfigDownloading(false);
+    }
+  };
+
   const handleRegenerateItem = async (item: IDatasetItem) => {
     if (!datasetId) return;
     setRegeneratingItemId(item.id);
@@ -243,6 +281,17 @@ export function DatasetDetailsPage() {
             >
               Add item
             </Button>
+            {data?.config ? (
+              <Button
+                variant="outline"
+                iconLeft={<DownloadIcon />}
+                onClick={handleDownloadConfig}
+                loading={isConfigDownloading}
+                disabled={!data.config.id || isConfigDownloading}
+              >
+                Config
+              </Button>
+            ) : null}
             <IconButton
               aria-label="Edit dataset"
               icon={<PencilLineIcon />}
@@ -303,6 +352,8 @@ export function DatasetDetailsPage() {
               <Skeleton width={180} height={16} />
               <Skeleton width={120} height={12} />
               <Skeleton width={200} height={16} />
+              <Skeleton width={140} height={12} />
+              <Skeleton width={180} height={16} />
             </div>
             <Grid columns={3} gap={16}>
               {Array.from({ length: 6 }).map((_, index) => (
@@ -319,6 +370,11 @@ export function DatasetDetailsPage() {
             <div className={s.detailsGrid}>
               <Field label="Name">
                 <Typography variant="body">{data.name}</Typography>
+              </Field>
+              <Field label="Character name">
+                <Typography variant="body" tone="muted">
+                  {data.characterName || '-'}
+                </Typography>
               </Field>
               <Field label="LoRA trigger word">
                 <Typography variant="body" tone="muted">

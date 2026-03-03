@@ -19,6 +19,7 @@ type MarkUploadedResponse = {
 const signFallbackError = 'Unable to prepare upload.';
 const markFallbackError = 'Unable to finalize upload.';
 const copyFallbackError = 'Unable to copy file.';
+const signedUrlFallbackError = 'Unable to get file download link.';
 
 export type CopyFileDto = {
   id: string;
@@ -62,4 +63,17 @@ export async function copyFile(payload: CopyFileDto) {
   if (!res.ok) {
     throw await buildApiError(res, copyFallbackError);
   }
+}
+
+export async function getFileSignedUrl(fileId: string) {
+  const res = await apiFetch(`/admin/files/${fileId}/signed-url`);
+  if (!res.ok) {
+    throw await buildApiError(res, signedUrlFallbackError);
+  }
+  const text = await res.text();
+  const trimmed = text.trim();
+  if (!trimmed) {
+    throw new Error(signedUrlFallbackError);
+  }
+  return trimmed;
 }
