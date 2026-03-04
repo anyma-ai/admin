@@ -84,7 +84,12 @@ export async function getDatasetDetails(id: string) {
   if (!res.ok) {
     throw await buildApiError(res, listFallbackError);
   }
-  return (await res.json()) as IDatasetDetails;
+  const datasetDetails = (await res.json()) as IDatasetDetails;
+
+  datasetDetails.items.sort((a, b) => {
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+  return datasetDetails;
 }
 
 export async function createDataset(payload: CreateDatasetDto) {
@@ -132,9 +137,12 @@ export async function createDatasetItem(id: string) {
 }
 
 export async function regenerateDatasetItem(id: string, itemId: string) {
-  const res = await apiFetch(`/admin/datasets/${id}/items/${itemId}/regenerate`, {
-    method: 'POST',
-  });
+  const res = await apiFetch(
+    `/admin/datasets/${id}/items/${itemId}/regenerate`,
+    {
+      method: 'POST',
+    },
+  );
   if (!res.ok) {
     throw await buildApiError(res, regenerateItemFallbackError);
   }
