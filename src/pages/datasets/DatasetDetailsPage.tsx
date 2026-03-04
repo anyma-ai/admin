@@ -126,7 +126,10 @@ export function DatasetDetailsPage() {
     return undefined;
   }, [editShowErrors, editName]);
 
-  const items = data?.items ?? [];
+  const items =
+    data?.items.sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }) ?? [];
   const refImgs = data?.refImgs ?? [];
   const itemsLabel = data
     ? `Generated items (${items.length})`
