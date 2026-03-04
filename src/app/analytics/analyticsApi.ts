@@ -84,6 +84,8 @@ export type DeeplinkAnalyticsItem = {
   transactions: number;
   revenue: number;
   conversion: number;
+  arpu: number;
+  arpc: number;
 };
 
 export async function getAnalyticsMainRange(params: {

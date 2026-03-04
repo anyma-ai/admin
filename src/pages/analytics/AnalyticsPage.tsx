@@ -31,9 +31,9 @@ import {
   normalizeRange,
   type PaymentsConversionGroupBy,
   type PaymentsRevenueGroupBy,
+  useAnalyticsDaily,
   useAnalyticsDailyByCountry,
   useAnalyticsDailyCountryTop,
-  useAnalyticsDaily,
   useAnalyticsDeeplinks,
   useAnalyticsMainRange,
   useAnalyticsMetrics,
@@ -113,6 +113,8 @@ type DailyChartDatum = {
 type DeeplinkSortKey =
   | 'total'
   | 'revenue'
+  | 'arpu'
+  | 'arpc'
   | 'transactions'
   | 'visits'
   | 'unique'
@@ -237,6 +239,8 @@ function isValidDeeplinkSort(
   return (
     value === 'total' ||
     value === 'revenue' ||
+    value === 'arpu' ||
+    value === 'arpc' ||
     value === 'transactions' ||
     value === 'visits' ||
     value === 'unique' ||
@@ -369,7 +373,7 @@ export function AnalyticsPage() {
     ? rawMetric
     : (sectionConfig.defaultMetric ?? sectionConfig.metrics[0]?.key ?? null);
   const selectedMetric = getMetricDefinition(metricKey);
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+
   const metricOptions = useMemo(() => getMetricOptions(section), [section]);
   const defaultKpiMonth = useMemo(
     () =>
@@ -632,7 +636,7 @@ export function AnalyticsPage() {
 
   const rangeMonths = useMemo(
     () => getMonthRange(startMonth, endMonth),
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
+
     [startMonth, endMonth],
   );
 
@@ -823,12 +827,7 @@ export function AnalyticsPage() {
     if (!isCountriesSection) return;
     if (rawCountry || !selectedCountry) return;
     updateSearchParams({ country: selectedCountry }, true);
-  }, [
-    isCountriesSection,
-    rawCountry,
-    selectedCountry,
-    updateSearchParams,
-  ]);
+  }, [isCountriesSection, rawCountry, selectedCountry, updateSearchParams]);
 
   const kpiCards = sectionConfig.metrics.map((metric) => {
     const value = currentRow?.[metric.key] ?? null;
@@ -1205,6 +1204,8 @@ export function AnalyticsPage() {
     () => [
       { value: 'total', label: 'Total' },
       { value: 'revenue', label: 'Revenue' },
+      { value: 'arpu', label: 'ARPU' },
+      { value: 'arpc', label: 'ARPC' },
       { value: 'transactions', label: 'Transactions' },
       { value: 'visits', label: 'Visits' },
       { value: 'customers', label: 'Customers' },
@@ -1313,8 +1314,11 @@ export function AnalyticsPage() {
 
     const conversion =
       totals.total > 0 ? (totals.customers / totals.total) * 100 : null;
+    const arpu = totals.total > 0 ? totals.revenue / totals.total : null;
+    const arpc =
+      totals.customers > 0 ? totals.revenue / totals.customers : null;
 
-    return { ...totals, conversion };
+    return { ...totals, conversion, arpu, arpc };
   }, [deeplinkData]);
 
   const deeplinkColumns = useMemo(
@@ -1421,10 +1425,10 @@ export function AnalyticsPage() {
             variant="meta"
             tone="muted"
             as="div"
-            style={{ fontSize: 12 }}
+            style={{ fontSize: 12, textTransform: 'initial' }}
             className={s.alignRight}
           >
-            Transactions
+            TXs
           </Typography>
         ),
       },
@@ -1439,6 +1443,34 @@ export function AnalyticsPage() {
             className={s.alignRight}
           >
             Revenue
+          </Typography>
+        ),
+      },
+      {
+        key: 'arpu',
+        label: (
+          <Typography
+            variant="meta"
+            tone="muted"
+            as="div"
+            style={{ fontSize: 12 }}
+            className={s.alignRight}
+          >
+            ARPU
+          </Typography>
+        ),
+      },
+      {
+        key: 'arpc',
+        label: (
+          <Typography
+            variant="meta"
+            tone="muted"
+            as="div"
+            style={{ fontSize: 12 }}
+            className={s.alignRight}
+          >
+            ARPC
           </Typography>
         ),
       },
@@ -1554,6 +1586,30 @@ export function AnalyticsPage() {
             : '—'}
         </Typography>
       ),
+      arpu: (
+        <Typography
+          variant="body"
+          as="span"
+          className={s.alignRight}
+          style={{ fontSize: 14 }}
+        >
+          {dailyArpuMetric && Number.isFinite(item.arpu)
+            ? formatMetricValue(dailyArpuMetric, item.arpu, 'table')
+            : '—'}
+        </Typography>
+      ),
+      arpc: (
+        <Typography
+          variant="body"
+          as="span"
+          className={s.alignRight}
+          style={{ fontSize: 14 }}
+        >
+          {dailyArpcMetric && Number.isFinite(item.arpc)
+            ? formatMetricValue(dailyArpcMetric, item.arpc, 'table')
+            : '—'}
+        </Typography>
+      ),
       conversion: (
         <Typography
           variant="body"
@@ -1565,7 +1621,12 @@ export function AnalyticsPage() {
         </Typography>
       ),
     }));
-  }, [sortedDeeplinkRows, paymentsRevenueMetric]);
+  }, [
+    sortedDeeplinkRows,
+    paymentsRevenueMetric,
+    dailyArpuMetric,
+    dailyArpcMetric,
+  ]);
 
   const dailyTotals = useMemo(() => {
     const entries = dailyData ?? [];
@@ -1970,9 +2031,7 @@ export function AnalyticsPage() {
           className={s.alignRight}
           style={{ fontSize: 14 }}
         >
-          {Number.isFinite(item.customers)
-            ? formatCount(item.customers)
-            : '—'}
+          {Number.isFinite(item.customers) ? formatCount(item.customers) : '—'}
         </Typography>
       ),
       revenue: (
@@ -2226,7 +2285,9 @@ export function AnalyticsPage() {
     [sectionConfig.metrics],
   );
   const monthlyExportRows = useMemo(() => {
-    const orderedMonths = [...rangeMonths].sort((a, b) => compareMonthIds(b, a));
+    const orderedMonths = [...rangeMonths].sort((a, b) =>
+      compareMonthIds(b, a),
+    );
     return orderedMonths.map((month) => {
       const row = dataByMonth.get(month);
       return [
@@ -2268,6 +2329,8 @@ export function AnalyticsPage() {
       Number.isFinite(item.customers) ? item.customers : null,
       Number.isFinite(item.transactions) ? item.transactions : null,
       Number.isFinite(item.revenue) ? item.revenue : null,
+      Number.isFinite(item.arpu) ? item.arpu : null,
+      Number.isFinite(item.arpc) ? item.arpc : null,
       Number.isFinite(item.conversion) ? item.conversion : null,
     ]);
   }, [sortedDeeplinkRows]);
@@ -2299,6 +2362,8 @@ export function AnalyticsPage() {
               'Customers',
               'Transactions',
               'Revenue (USD)',
+              'ARPU (USD)',
+              'ARPC (USD)',
               'Conversion rate',
             ],
             rows: deeplinkExportRows,
@@ -2506,14 +2571,14 @@ export function AnalyticsPage() {
 
               <Section title="Totals">
                 {isDeeplinksLoading ? (
-                  <Grid columns={7} gap={16}>
-                    {Array.from({ length: 7 }).map((_, index) => (
+                  <Grid columns={9} gap={16}>
+                    {Array.from({ length: 9 }).map((_, index) => (
                       <Skeleton key={index} height={88} />
                     ))}
                   </Grid>
                 ) : (
                   <>
-                    <Grid columns={7} gap={16}>
+                    <Grid columns={6} gap={16}>
                       <Card className={s.kpiCard} padding="md">
                         <Typography variant="meta" tone="muted">
                           Visits
@@ -2573,6 +2638,34 @@ export function AnalyticsPage() {
                             ? formatMetricValue(
                                 paymentsRevenueMetric,
                                 deeplinkTotals.revenue,
+                                'card',
+                              )
+                            : '—'}
+                        </Typography>
+                      </Card>
+                      <Card className={s.kpiCard} padding="md">
+                        <Typography variant="meta" tone="muted">
+                          ARPU
+                        </Typography>
+                        <Typography variant="h3">
+                          {deeplinkTotals && dailyArpuMetric
+                            ? formatMetricValue(
+                                dailyArpuMetric,
+                                deeplinkTotals.arpu,
+                                'card',
+                              )
+                            : '—'}
+                        </Typography>
+                      </Card>
+                      <Card className={s.kpiCard} padding="md">
+                        <Typography variant="meta" tone="muted">
+                          ARPC
+                        </Typography>
+                        <Typography variant="h3">
+                          {deeplinkTotals && dailyArpcMetric
+                            ? formatMetricValue(
+                                dailyArpcMetric,
+                                deeplinkTotals.arpc,
                                 'card',
                               )
                             : '—'}
@@ -2966,7 +3059,10 @@ export function AnalyticsPage() {
                     <Skeleton height={240} />
                   ) : countryTopRows.length ? (
                     <div className={s.tableWrap}>
-                      <Table columns={countryTopColumns} rows={countryTopRows} />
+                      <Table
+                        columns={countryTopColumns}
+                        rows={countryTopRows}
+                      />
                     </div>
                   ) : (
                     <EmptyState
