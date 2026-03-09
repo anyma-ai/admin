@@ -15,7 +15,7 @@ export enum ImgGenerationStatus {
 
 export interface ImgGenerationRequest {
   mainLoraId?: string;
-  secondaryLoraId?: string;
+  secondLoraId?: string;
   characterId: string;
   scenarioId: string;
   stage: RoleplayStage;
@@ -26,7 +26,7 @@ export interface IImgGeneration {
   id: string;
   character: ICharacter;
   mainLora: ILora;
-  secondaryLora?: ILora;
+  secondLora?: ILora;
   scenario: IScenario;
   stage: RoleplayStage;
   status: ImgGenerationStatus;

@@ -189,7 +189,9 @@ export function GenerationDetailsPage() {
                   <Typography variant="meta" tone="muted">
                     Stage
                   </Typography>
-                  <Typography variant="body">{formatStage(data.stage)}</Typography>
+                  <Typography variant="body">
+                    {formatStage(data.stage)}
+                  </Typography>
                 </div>
                 <div>
                   <Typography variant="meta" tone="muted">
@@ -197,7 +199,9 @@ export function GenerationDetailsPage() {
                   </Typography>
                   {data.mainLora ? (
                     <>
-                      <Typography variant="body">{data.mainLora.fileName}</Typography>
+                      <Typography variant="body">
+                        {data.mainLora.fileName}
+                      </Typography>
                       <Typography variant="caption" tone="muted">
                         {data.mainLora.id}
                       </Typography>
@@ -212,13 +216,13 @@ export function GenerationDetailsPage() {
                   <Typography variant="meta" tone="muted">
                     Secondary LoRA
                   </Typography>
-                  {data.secondaryLora ? (
+                  {data.secondLora ? (
                     <>
                       <Typography variant="body">
-                        {data.secondaryLora.fileName}
+                        {data.secondLora.fileName}
                       </Typography>
                       <Typography variant="caption" tone="muted">
-                        {data.secondaryLora.id}
+                        {data.secondLora.id}
                       </Typography>
                     </>
                   ) : (

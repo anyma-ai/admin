@@ -15,8 +15,8 @@ import {
   Textarea,
   Typography,
 } from '@/atoms';
-import { AppShell } from '@/components/templates';
 import { RoleplayStage, STAGES_IN_ORDER } from '@/common/types';
+import { AppShell } from '@/components/templates';
 
 import { SearchSelect } from './components/SearchSelect';
 import s from './GenerateImagePage.module.scss';
@@ -60,13 +60,13 @@ export function GenerateImagePage() {
     scenarioId: '',
     stage: '' as RoleplayStage | '',
     mainLoraId: '',
-    secondaryLoraId: '',
+    secondLoraId: '',
     userRequest: '',
   });
   const [showErrors, setShowErrors] = useState(false);
   const [characterSearch, setCharacterSearch] = useState('');
   const [mainLoraSearch, setMainLoraSearch] = useState('');
-  const [secondaryLoraSearch, setSecondaryLoraSearch] = useState('');
+  const [secondLoraSearch, setsecondLoraSearch] = useState('');
   const debouncedCharacterSearch = useDebouncedValue(
     characterSearch,
     SEARCH_DEBOUNCE_MS,
@@ -75,8 +75,8 @@ export function GenerateImagePage() {
     mainLoraSearch,
     SEARCH_DEBOUNCE_MS,
   );
-  const debouncedSecondaryLoraSearch = useDebouncedValue(
-    secondaryLoraSearch,
+  const debouncedsecondLoraSearch = useDebouncedValue(
+    secondLoraSearch,
     SEARCH_DEBOUNCE_MS,
   );
 
@@ -101,11 +101,11 @@ export function GenerateImagePage() {
     take: PAGE_SIZE,
   });
   const {
-    data: secondaryLoraData,
-    error: secondaryLoraError,
-    isLoading: isSecondaryLorasLoading,
+    data: secondLoraData,
+    error: secondLoraError,
+    isLoading: issecondLorasLoading,
   } = useLoras({
-    search: debouncedSecondaryLoraSearch || undefined,
+    search: debouncedsecondLoraSearch || undefined,
     order: 'DESC',
     skip: 0,
     take: PAGE_SIZE,
@@ -134,21 +134,21 @@ export function GenerateImagePage() {
       scenarioId?: string;
       stage?: string;
       mainLoraId?: string;
-      secondaryLoraId?: string;
+      secondLoraId?: string;
       userRequest?: string;
     } = {};
     if (!values.characterId) result.characterId = 'Select a character.';
     if (!values.scenarioId) result.scenarioId = 'Select a scenario.';
     if (!values.stage) result.stage = 'Select a stage.';
-    if (values.secondaryLoraId && !values.mainLoraId) {
-      result.secondaryLoraId = 'Select main LoRA first.';
+    if (values.secondLoraId && !values.mainLoraId) {
+      result.secondLoraId = 'Select main LoRA first.';
     }
     if (
       values.mainLoraId &&
-      values.secondaryLoraId &&
-      values.mainLoraId === values.secondaryLoraId
+      values.secondLoraId &&
+      values.mainLoraId === values.secondLoraId
     ) {
-      result.secondaryLoraId = 'Secondary LoRA must differ from main LoRA.';
+      result.secondLoraId = 'Secondary LoRA must differ from main LoRA.';
     }
     if (!values.userRequest.trim()) result.userRequest = 'Enter a request.';
     return result;
@@ -160,9 +160,8 @@ export function GenerateImagePage() {
         values.characterId &&
         values.scenarioId &&
         values.stage &&
-        (!values.secondaryLoraId || values.mainLoraId) &&
-        (!values.secondaryLoraId ||
-          values.mainLoraId !== values.secondaryLoraId) &&
+        (!values.secondLoraId || values.mainLoraId) &&
+        (!values.secondLoraId || values.mainLoraId !== values.secondLoraId) &&
         values.userRequest.trim(),
       ),
     [values],
@@ -178,7 +177,7 @@ export function GenerateImagePage() {
       scenarioId: values.scenarioId,
       stage: values.stage as RoleplayStage,
       mainLoraId: values.mainLoraId || undefined,
-      secondaryLoraId: values.secondaryLoraId || undefined,
+      secondLoraId: values.secondLoraId || undefined,
       userRequest: values.userRequest.trim(),
     });
     if (response?.id) {
@@ -187,7 +186,7 @@ export function GenerateImagePage() {
   };
 
   const blockingError =
-    characterError || mainLoraError || secondaryLoraError || detailsError;
+    characterError || mainLoraError || secondLoraError || detailsError;
   const errorMessage =
     blockingError instanceof Error
       ? blockingError.message
@@ -210,13 +209,13 @@ export function GenerateImagePage() {
       meta: lora.id,
     })),
   ];
-  const secondaryLoraOptions = [
+  const secondLoraOptions = [
     {
       id: '',
       label: 'No secondary LoRA',
       meta: undefined,
     },
-    ...(secondaryLoraData?.data ?? [])
+    ...(secondLoraData?.data ?? [])
       .filter((lora) => lora.id !== values.mainLoraId)
       .map((lora) => ({
         id: lora.id,
@@ -339,10 +338,10 @@ export function GenerateImagePage() {
                   setValues((prev) => ({
                     ...prev,
                     mainLoraId: value,
-                    secondaryLoraId:
-                      !value || prev.secondaryLoraId === value
+                    secondLoraId:
+                      !value || prev.secondLoraId === value
                         ? ''
-                        : prev.secondaryLoraId,
+                        : prev.secondLoraId,
                   }))
                 }
                 placeholder="Select main LoRA"
@@ -354,16 +353,16 @@ export function GenerateImagePage() {
             <Field
               label="Secondary LoRA"
               labelFor="generation-secondary-lora"
-              error={errors.secondaryLoraId}
+              error={errors.secondLoraId}
             >
               <SearchSelect
                 id="generation-secondary-lora"
-                options={secondaryLoraOptions}
-                value={values.secondaryLoraId}
-                search={secondaryLoraSearch}
-                onSearchChange={setSecondaryLoraSearch}
+                options={secondLoraOptions}
+                value={values.secondLoraId}
+                search={secondLoraSearch}
+                onSearchChange={setsecondLoraSearch}
                 onSelect={(value) =>
-                  setValues((prev) => ({ ...prev, secondaryLoraId: value }))
+                  setValues((prev) => ({ ...prev, secondLoraId: value }))
                 }
                 placeholder={
                   values.mainLoraId
@@ -371,8 +370,8 @@ export function GenerateImagePage() {
                     : 'Select main LoRA first'
                 }
                 disabled={!values.mainLoraId || createMutation.isPending}
-                loading={isSecondaryLorasLoading}
-                invalid={Boolean(errors.secondaryLoraId)}
+                loading={issecondLorasLoading}
+                invalid={Boolean(errors.secondLoraId)}
               />
             </Field>
           </FormRow>

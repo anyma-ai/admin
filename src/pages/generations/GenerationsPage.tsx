@@ -18,7 +18,7 @@ import {
   Table,
   Typography,
 } from '@/atoms';
-import { type IImgGeneration,ImgGenerationStatus } from '@/common/types';
+import { type IImgGeneration, ImgGenerationStatus } from '@/common/types';
 import { AppShell } from '@/components/templates';
 
 import s from './GenerationsPage.module.scss';
@@ -211,17 +211,17 @@ export function GenerationsPage() {
                 </Typography>
               </>
             ) : null}
-            {generation.secondaryLora ? (
+            {generation.secondLora ? (
               <>
                 <Typography variant="body">
-                  Secondary: {generation.secondaryLora.fileName}
+                  Secondary: {generation.secondLora.fileName}
                 </Typography>
                 <Typography variant="caption" tone="muted">
-                  {generation.secondaryLora.id}
+                  {generation.secondLora.id}
                 </Typography>
               </>
             ) : null}
-            {!generation.mainLora && !generation.secondaryLora ? (
+            {!generation.mainLora && !generation.secondLora ? (
               <Typography variant="body" tone="muted">
                 -
               </Typography>
@@ -361,7 +361,8 @@ export function GenerationsPage() {
                         className: s.clickableRow,
                         role: 'link',
                         tabIndex: 0,
-                        onClick: () => navigate(`/generations/${generation.id}`),
+                        onClick: () =>
+                          navigate(`/generations/${generation.id}`),
                         onKeyDown: (event) => {
                           if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
