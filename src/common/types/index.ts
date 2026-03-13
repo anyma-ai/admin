@@ -11,5 +11,6 @@ export * from './logs.type';
 export * from './lora.type';
 export * from './plan.type';
 export * from './prompt.type';
+export * from './scenario-gen.type';
 export * from './tg-user.type';
 export * from './user.type';

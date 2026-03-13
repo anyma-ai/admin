@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth';
 import {
+  AudioLinesIcon,
   ChartIcon,
   CircleDotIcon,
   DollarSignIcon,
@@ -40,6 +41,7 @@ const navItems: NavItem[] = [
   { label: 'Broadcast', to: '/broadcast', icon: <RadioIcon /> },
   { label: 'Plans', to: '/plans', icon: <DollarSignIcon /> },
   { label: 'Prompts', to: '/prompts', icon: <MessageSquareQuoteIcon /> },
+  { label: 'Scenario Gen', to: '/scenario-gen', icon: <AudioLinesIcon /> },
   { label: 'Datasets', to: '/datasets', icon: <CircleDotIcon /> },
   { label: 'Generations', to: '/generations', icon: <NewspaperIcon /> },
   { label: 'Logs', to: '/logs', icon: <LogsIcon /> },

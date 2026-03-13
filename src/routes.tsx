@@ -30,6 +30,9 @@ import {
   PromptsPage,
   PromptUpdatePage,
   ResetPasswordPage,
+  ScenarioGenCreatePage,
+  ScenarioGenDetailsPage,
+  ScenarioGenPage,
   UiKitPage,
   UsersPage,
 } from '@/pages';
@@ -69,6 +72,9 @@ export function AppRoutes() {
         <Route path="/prompts" element={<PromptsPage />} />
         <Route path="/prompts/new" element={<PromptCreatePage />} />
         <Route path="/prompts/:id" element={<PromptUpdatePage />} />
+        <Route path="/scenario-gen" element={<ScenarioGenPage />} />
+        <Route path="/scenario-gen/new" element={<ScenarioGenCreatePage />} />
+        <Route path="/scenario-gen/:id" element={<ScenarioGenDetailsPage />} />
         <Route path="/plans" element={<PlansPage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Route>

@@ -22,10 +22,23 @@ import {
   Switch,
   Textarea,
 } from '@/atoms';
-import { FileDir, type IFile } from '@/common/types';
+import {
+  CharacterBodyType,
+  CharacterBreastSize,
+  CharacterEthnicity,
+  CharacterHairColor,
+  FileDir,
+  type IFile,
+} from '@/common/types';
 import { ConfirmModal, FileUpload } from '@/components/molecules';
 import { AppShell } from '@/components/templates';
 
+import {
+  BODY_TYPE_OPTIONS,
+  BREAST_SIZE_OPTIONS,
+  ETHNICITY_OPTIONS,
+  HAIR_COLOR_OPTIONS,
+} from './characterAttributeOptions';
 import s from './CharacterDetailsPage.module.scss';
 import { CharacterHeader } from './components/CharacterHeader';
 import { CharacterOverview } from './components/CharacterOverview';
@@ -69,26 +82,19 @@ export function CharacterDetailsPage() {
   const updateMutation = useUpdateCharacter();
   const deleteMutation = useDeleteCharacter();
 
-  const scenarios = data?.scenarios ?? [];
+  const scenarios = useMemo(() => data?.scenarios ?? [], [data?.scenarios]);
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(
     null,
   );
-
-  useEffect(() => {
-    if (!scenarios.length) {
-      setSelectedScenarioId(null);
-      return;
+  const effectiveSelectedScenarioId = useMemo(() => {
+    if (!scenarios.length) return null;
+    if (
+      selectedScenarioId &&
+      scenarios.some((scenario) => scenario.id === selectedScenarioId)
+    ) {
+      return selectedScenarioId;
     }
-    if (!selectedScenarioId) {
-      setSelectedScenarioId(scenarios[0]?.id ?? null);
-      return;
-    }
-    const stillExists = scenarios.some(
-      (scenario) => scenario.id === selectedScenarioId,
-    );
-    if (!stillExists) {
-      setSelectedScenarioId(scenarios[0]?.id ?? null);
-    }
+    return scenarios[0]?.id ?? null;
   }, [scenarios, selectedScenarioId]);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -97,6 +103,10 @@ export function CharacterDetailsPage() {
     name: '',
     emoji: '',
     gender: '',
+    hairColor: CharacterHairColor.Blond,
+    ethnicity: CharacterEthnicity.Caucasian,
+    bodyType: CharacterBodyType.Average,
+    breastSize: CharacterBreastSize.Medium,
     isActive: true,
     isFeatured: false,
     loraId: '',
@@ -134,19 +144,61 @@ export function CharacterDetailsPage() {
 
   const validationErrors = useMemo(() => {
     if (!showErrors) return {};
-    const errors: { name?: string; loraId?: string } = {};
+    const errors: {
+      name?: string;
+      loraId?: string;
+      hairColor?: string;
+      ethnicity?: string;
+      bodyType?: string;
+      breastSize?: string;
+    } = {};
     if (!formValues.name.trim()) {
       errors.name = 'Enter a name.';
     }
     if (!formValues.loraId) {
       errors.loraId = 'Select a LoRA.';
     }
+    if (!formValues.hairColor) {
+      errors.hairColor = 'Select a hair color.';
+    }
+    if (!formValues.ethnicity) {
+      errors.ethnicity = 'Select an ethnicity.';
+    }
+    if (!formValues.bodyType) {
+      errors.bodyType = 'Select a body type.';
+    }
+    if (!formValues.breastSize) {
+      errors.breastSize = 'Select a breast size.';
+    }
     return errors;
-  }, [formValues.loraId, formValues.name, showErrors]);
+  }, [
+    formValues.bodyType,
+    formValues.breastSize,
+    formValues.ethnicity,
+    formValues.hairColor,
+    formValues.loraId,
+    formValues.name,
+    showErrors,
+  ]);
 
   const isValid = useMemo(
-    () => Boolean(formValues.name.trim() && formValues.loraId),
-    [formValues.loraId, formValues.name],
+    () =>
+      Boolean(
+        formValues.name.trim() &&
+        formValues.loraId &&
+        formValues.hairColor &&
+        formValues.ethnicity &&
+        formValues.bodyType &&
+        formValues.breastSize,
+      ),
+    [
+      formValues.bodyType,
+      formValues.breastSize,
+      formValues.ethnicity,
+      formValues.hairColor,
+      formValues.loraId,
+      formValues.name,
+    ],
   );
 
   const isDirty = useMemo(
@@ -154,6 +206,10 @@ export function CharacterDetailsPage() {
       formValues.name !== initialValues.name ||
       formValues.emoji !== initialValues.emoji ||
       formValues.gender !== initialValues.gender ||
+      formValues.hairColor !== initialValues.hairColor ||
+      formValues.ethnicity !== initialValues.ethnicity ||
+      formValues.bodyType !== initialValues.bodyType ||
+      formValues.breastSize !== initialValues.breastSize ||
       formValues.isActive !== initialValues.isActive ||
       formValues.isFeatured !== initialValues.isFeatured ||
       formValues.loraId !== initialValues.loraId ||
@@ -169,6 +225,10 @@ export function CharacterDetailsPage() {
       name: data.name ?? '',
       emoji: data.emoji ?? '',
       gender: data.gender ?? '',
+      hairColor: data.hairColor ?? '',
+      ethnicity: data.ethnicity ?? '',
+      bodyType: data.bodyType ?? '',
+      breastSize: data.breastSize ?? '',
       isActive: data.isActive,
       isFeatured: Boolean(data.isFeatured),
       loraId: data.lora?.id ?? '',
@@ -195,8 +255,19 @@ export function CharacterDetailsPage() {
     const errors = {
       name: formValues.name.trim() ? undefined : 'Enter a name.',
       loraId: formValues.loraId ? undefined : 'Select a LoRA.',
+      hairColor: formValues.hairColor ? undefined : 'Select a hair color.',
+      ethnicity: formValues.ethnicity ? undefined : 'Select an ethnicity.',
+      bodyType: formValues.bodyType ? undefined : 'Select a body type.',
+      breastSize: formValues.breastSize ? undefined : 'Select a breast size.',
     };
-    if (errors.name || errors.loraId) {
+    if (
+      errors.name ||
+      errors.loraId ||
+      errors.hairColor ||
+      errors.ethnicity ||
+      errors.bodyType ||
+      errors.breastSize
+    ) {
       setShowErrors(true);
       return;
     }
@@ -206,6 +277,10 @@ export function CharacterDetailsPage() {
         name: formValues.name.trim(),
         emoji: formValues.emoji.trim(),
         gender: formValues.gender.trim(),
+        hairColor: formValues.hairColor,
+        ethnicity: formValues.ethnicity,
+        bodyType: formValues.bodyType,
+        breastSize: formValues.breastSize,
         isActive: formValues.isActive,
         isFeatured: formValues.isFeatured,
         loraId: formValues.loraId,
@@ -262,7 +337,7 @@ export function CharacterDetailsPage() {
           characterId={id ?? null}
           characterName={data?.name ?? ''}
           scenarios={scenarios}
-          selectedScenarioId={selectedScenarioId}
+          selectedScenarioId={effectiveSelectedScenarioId}
           onSelectScenario={setSelectedScenarioId}
           isLoading={Boolean(isLoading && !data)}
           formatDate={formatDate}
@@ -288,7 +363,14 @@ export function CharacterDetailsPage() {
                   !isDirty ||
                   !isValid ||
                   updateMutation.isPending ||
-                  Boolean(validationErrors.name || validationErrors.loraId)
+                  Boolean(
+                    validationErrors.name ||
+                    validationErrors.loraId ||
+                    validationErrors.hairColor ||
+                    validationErrors.ethnicity ||
+                    validationErrors.bodyType ||
+                    validationErrors.breastSize,
+                  )
                 }
               >
                 Save
@@ -345,6 +427,89 @@ export function CharacterDetailsPage() {
                   onChange={(value) =>
                     setFormValues((prev) => ({ ...prev, gender: value }))
                   }
+                  fullWidth
+                />
+              </Field>
+              <Field
+                label="Hair color"
+                labelFor="character-edit-hair-color"
+                error={validationErrors.hairColor}
+              >
+                <Select
+                  id="character-edit-hair-color"
+                  size="sm"
+                  options={HAIR_COLOR_OPTIONS}
+                  value={formValues.hairColor}
+                  onChange={(value) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      hairColor: value as CharacterHairColor,
+                    }))
+                  }
+                  placeholder="Select hair color"
+                  fullWidth
+                />
+              </Field>
+              <Field
+                label="Ethnicity"
+                labelFor="character-edit-ethnicity"
+                error={validationErrors.ethnicity}
+              >
+                <Select
+                  id="character-edit-ethnicity"
+                  size="sm"
+                  options={ETHNICITY_OPTIONS}
+                  value={formValues.ethnicity}
+                  onChange={(value) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      ethnicity: value as CharacterEthnicity,
+                    }))
+                  }
+                  placeholder="Select ethnicity"
+                  fullWidth
+                />
+              </Field>
+            </FormRow>
+
+            <FormRow columns={3}>
+              <Field
+                label="Body type"
+                labelFor="character-edit-body-type"
+                error={validationErrors.bodyType}
+              >
+                <Select
+                  id="character-edit-body-type"
+                  size="sm"
+                  options={BODY_TYPE_OPTIONS}
+                  value={formValues.bodyType}
+                  onChange={(value) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      bodyType: value as CharacterBodyType,
+                    }))
+                  }
+                  placeholder="Select body type"
+                  fullWidth
+                />
+              </Field>
+              <Field
+                label="Breast size"
+                labelFor="character-edit-breast-size"
+                error={validationErrors.breastSize}
+              >
+                <Select
+                  id="character-edit-breast-size"
+                  size="sm"
+                  options={BREAST_SIZE_OPTIONS}
+                  value={formValues.breastSize}
+                  onChange={(value) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      breastSize: value as CharacterBreastSize,
+                    }))
+                  }
+                  placeholder="Select breast size"
                   fullWidth
                 />
               </Field>

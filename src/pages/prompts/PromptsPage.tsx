@@ -57,6 +57,7 @@ const TYPE_FILTER_OPTIONS = [
   { label: 'All', value: 'all' },
   { label: 'Chat', value: PromptType.Chat },
   { label: 'Ping', value: PromptType.Ping },
+  { label: 'Scenario Gen', value: PromptType.ScenarioGen },
   { label: 'Image', value: PromptType.Image },
   { label: 'Image Sex', value: PromptType.ImageSex },
   { label: 'Image Anime', value: PromptType.AnimeImage },
@@ -110,7 +111,8 @@ function resolveTypeFilter(value: string | null) {
     value === PromptType.Ping ||
     value === PromptType.ImageSex ||
     value === PromptType.AnimeImage ||
-    value === PromptType.AnimeImageSex
+    value === PromptType.AnimeImageSex ||
+    value === PromptType.ScenarioGen
   )
     return value;
   return DEFAULT_TYPE_FILTER;

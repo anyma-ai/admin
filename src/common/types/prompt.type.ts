@@ -5,6 +5,7 @@ export enum PromptType {
   ImageSex = 'image-sex',
   AnimeImage = 'anime-image',
   AnimeImageSex = 'anime-image-sex',
+  ScenarioGen = 'scenario-gen',
 }
 
 export type CreatePromptDto = {

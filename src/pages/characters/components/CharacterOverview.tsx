@@ -2,6 +2,12 @@ import { PencilLineIcon } from '@/assets/icons';
 import { Badge, Field, FormRow, IconButton, Typography } from '@/atoms';
 import type { ICharacterDetails } from '@/common/types';
 
+import {
+  getBodyTypeLabel,
+  getBreastSizeLabel,
+  getEthnicityLabel,
+  getHairColorLabel,
+} from '../characterAttributeOptions';
 import s from '../CharacterDetailsPage.module.scss';
 
 type CharacterOverviewProps = {
@@ -135,6 +141,32 @@ export function CharacterOverview({
         <Field label="Gender" labelFor="character-gender">
           <Typography id="character-gender" variant="body">
             {formatValue(data?.gender)}
+          </Typography>
+        </Field>
+      </FormRow>
+
+      <FormRow columns={3}>
+        <Field label="Hair color" labelFor="character-hair-color">
+          <Typography id="character-hair-color" variant="body">
+            {getHairColorLabel(data?.hairColor)}
+          </Typography>
+        </Field>
+        <Field label="Ethnicity" labelFor="character-ethnicity">
+          <Typography id="character-ethnicity" variant="body">
+            {getEthnicityLabel(data?.ethnicity)}
+          </Typography>
+        </Field>
+        <Field label="Body type" labelFor="character-body-type">
+          <Typography id="character-body-type" variant="body">
+            {getBodyTypeLabel(data?.bodyType)}
+          </Typography>
+        </Field>
+      </FormRow>
+
+      <FormRow columns={3}>
+        <Field label="Breast size" labelFor="character-breast-size">
+          <Typography id="character-breast-size" variant="body">
+            {getBreastSizeLabel(data?.breastSize)}
           </Typography>
         </Field>
       </FormRow>

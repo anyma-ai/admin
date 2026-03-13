@@ -59,6 +59,37 @@ export interface StageDirectives {
 
 export type StageDirectivesMap = Record<RoleplayStage, StageDirectives>;
 
+export enum CharacterHairColor {
+  Blond = 'blond',
+  Brunette = 'brunette',
+  Redhead = 'redhead',
+  Black = 'black',
+  Pink = 'pink',
+}
+
+export enum CharacterEthnicity {
+  Caucasian = 'caucasian',
+  Arabian = 'arabian',
+  Latina = 'latina',
+  Asian = 'asian',
+  Afro = 'afro',
+}
+
+export enum CharacterBodyType {
+  Skinny = 'skinny',
+  Athletic = 'athletic',
+  Average = 'average',
+  Curvy = 'curvy',
+  Bbw = 'bbw',
+}
+
+export enum CharacterBreastSize {
+  Small = 'small',
+  Medium = 'medium',
+  Large = 'large',
+  ExtraLarge = 'extraLarge',
+}
+
 interface ICharacterGift {
   id: string;
   scenarioId: string;
@@ -97,4 +128,8 @@ export interface IScenario {
 export interface ICharacterDetails extends ICharacter {
   lora: ILora;
   scenarios: IScenario[];
+  hairColor: CharacterHairColor;
+  ethnicity: CharacterEthnicity;
+  bodyType: CharacterBodyType;
+  breastSize: CharacterBreastSize;
 }

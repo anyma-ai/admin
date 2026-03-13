@@ -25,10 +25,23 @@ import {
   Textarea,
   Typography,
 } from '@/atoms';
-import { FileDir, type IFile } from '@/common/types';
+import {
+  CharacterBodyType,
+  CharacterBreastSize,
+  CharacterEthnicity,
+  CharacterHairColor,
+  FileDir,
+  type IFile,
+} from '@/common/types';
 import { FileUpload } from '@/components/molecules';
 import { AppShell } from '@/components/templates';
 
+import {
+  BODY_TYPE_OPTIONS,
+  BREAST_SIZE_OPTIONS,
+  ETHNICITY_OPTIONS,
+  HAIR_COLOR_OPTIONS,
+} from './characterAttributeOptions';
 import s from './CharactersPage.module.scss';
 import { LoraSelect } from './components/LoraSelect';
 
@@ -102,6 +115,10 @@ export function CharactersPage() {
     name: '',
     emoji: '',
     gender: 'female',
+    hairColor: CharacterHairColor.Blond,
+    ethnicity: CharacterEthnicity.Caucasian,
+    bodyType: CharacterBodyType.Average,
+    breastSize: CharacterBreastSize.Medium,
     isFeatured: false,
     loraId: '',
     description: '',
@@ -192,7 +209,7 @@ export function CharactersPage() {
   const { data: loraData, isLoading: isLoraLoading } =
     useLoras(loraQueryParams);
 
-  const characters = data?.data ?? [];
+  const characters = useMemo(() => data?.data ?? [], [data?.data]);
   const total = data?.total ?? 0;
   const effectiveTake = data?.take ?? pageSize;
   const effectiveSkip = data?.skip ?? (page - 1) * pageSize;
@@ -289,19 +306,61 @@ export function CharactersPage() {
 
   const createValidationErrors = useMemo(() => {
     if (!createShowErrors) return {};
-    const errors: { name?: string; loraId?: string } = {};
+    const errors: {
+      name?: string;
+      loraId?: string;
+      hairColor?: string;
+      ethnicity?: string;
+      bodyType?: string;
+      breastSize?: string;
+    } = {};
     if (!createValues.name.trim()) {
       errors.name = 'Enter a name.';
     }
     if (!createValues.loraId) {
       errors.loraId = 'Select a LoRA.';
     }
+    if (!createValues.hairColor) {
+      errors.hairColor = 'Select a hair color.';
+    }
+    if (!createValues.ethnicity) {
+      errors.ethnicity = 'Select an ethnicity.';
+    }
+    if (!createValues.bodyType) {
+      errors.bodyType = 'Select a body type.';
+    }
+    if (!createValues.breastSize) {
+      errors.breastSize = 'Select a breast size.';
+    }
     return errors;
-  }, [createShowErrors, createValues.loraId, createValues.name]);
+  }, [
+    createShowErrors,
+    createValues.bodyType,
+    createValues.breastSize,
+    createValues.ethnicity,
+    createValues.hairColor,
+    createValues.loraId,
+    createValues.name,
+  ]);
 
   const createIsValid = useMemo(
-    () => Boolean(createValues.name.trim() && createValues.loraId),
-    [createValues.loraId, createValues.name],
+    () =>
+      Boolean(
+        createValues.name.trim() &&
+        createValues.loraId &&
+        createValues.hairColor &&
+        createValues.ethnicity &&
+        createValues.bodyType &&
+        createValues.breastSize,
+      ),
+    [
+      createValues.bodyType,
+      createValues.breastSize,
+      createValues.ethnicity,
+      createValues.hairColor,
+      createValues.loraId,
+      createValues.name,
+    ],
   );
 
   const openCreateModal = () => {
@@ -309,6 +368,10 @@ export function CharactersPage() {
       name: '',
       emoji: '',
       gender: 'female',
+      hairColor: CharacterHairColor.Blond,
+      ethnicity: CharacterEthnicity.Caucasian,
+      bodyType: CharacterBodyType.Average,
+      breastSize: CharacterBreastSize.Medium,
       isFeatured: false,
       loraId: '',
       description: '',
@@ -331,8 +394,19 @@ export function CharactersPage() {
     const errors = {
       name: createValues.name.trim() ? undefined : 'Enter a name.',
       loraId: createValues.loraId ? undefined : 'Select a LoRA.',
+      hairColor: createValues.hairColor ? undefined : 'Select a hair color.',
+      ethnicity: createValues.ethnicity ? undefined : 'Select an ethnicity.',
+      bodyType: createValues.bodyType ? undefined : 'Select a body type.',
+      breastSize: createValues.breastSize ? undefined : 'Select a breast size.',
     };
-    if (errors.name || errors.loraId) {
+    if (
+      errors.name ||
+      errors.loraId ||
+      errors.hairColor ||
+      errors.ethnicity ||
+      errors.bodyType ||
+      errors.breastSize
+    ) {
       setCreateShowErrors(true);
       return;
     }
@@ -340,6 +414,10 @@ export function CharactersPage() {
       name: createValues.name.trim(),
       emoji: createValues.emoji.trim(),
       gender: createValues.gender.trim(),
+      hairColor: createValues.hairColor,
+      ethnicity: createValues.ethnicity,
+      bodyType: createValues.bodyType,
+      breastSize: createValues.breastSize,
       loraId: createValues.loraId,
       description: createValues.description.trim(),
       avatarId: createValues.avatarId,
@@ -504,7 +582,11 @@ export function CharactersPage() {
                   createMutation.isPending ||
                   Boolean(
                     createValidationErrors.name ||
-                      createValidationErrors.loraId,
+                    createValidationErrors.loraId ||
+                    createValidationErrors.hairColor ||
+                    createValidationErrors.ethnicity ||
+                    createValidationErrors.bodyType ||
+                    createValidationErrors.breastSize,
                   )
                 }
               >
@@ -562,6 +644,89 @@ export function CharactersPage() {
                   onChange={(value) =>
                     setCreateValues((prev) => ({ ...prev, gender: value }))
                   }
+                  fullWidth
+                />
+              </Field>
+              <Field
+                label="Hair color"
+                labelFor="character-create-hair-color"
+                error={createValidationErrors.hairColor}
+              >
+                <Select
+                  id="character-create-hair-color"
+                  size="sm"
+                  options={HAIR_COLOR_OPTIONS}
+                  value={createValues.hairColor}
+                  onChange={(value) =>
+                    setCreateValues((prev) => ({
+                      ...prev,
+                      hairColor: value as CharacterHairColor,
+                    }))
+                  }
+                  placeholder="Select hair color"
+                  fullWidth
+                />
+              </Field>
+            </FormRow>
+
+            <FormRow columns={3}>
+              <Field
+                label="Ethnicity"
+                labelFor="character-create-ethnicity"
+                error={createValidationErrors.ethnicity}
+              >
+                <Select
+                  id="character-create-ethnicity"
+                  size="sm"
+                  options={ETHNICITY_OPTIONS}
+                  value={createValues.ethnicity}
+                  onChange={(value) =>
+                    setCreateValues((prev) => ({
+                      ...prev,
+                      ethnicity: value as CharacterEthnicity,
+                    }))
+                  }
+                  placeholder="Select ethnicity"
+                  fullWidth
+                />
+              </Field>
+              <Field
+                label="Body type"
+                labelFor="character-create-body-type"
+                error={createValidationErrors.bodyType}
+              >
+                <Select
+                  id="character-create-body-type"
+                  size="sm"
+                  options={BODY_TYPE_OPTIONS}
+                  value={createValues.bodyType}
+                  onChange={(value) =>
+                    setCreateValues((prev) => ({
+                      ...prev,
+                      bodyType: value as CharacterBodyType,
+                    }))
+                  }
+                  placeholder="Select body type"
+                  fullWidth
+                />
+              </Field>
+              <Field
+                label="Breast size"
+                labelFor="character-create-breast-size"
+                error={createValidationErrors.breastSize}
+              >
+                <Select
+                  id="character-create-breast-size"
+                  size="sm"
+                  options={BREAST_SIZE_OPTIONS}
+                  value={createValues.breastSize}
+                  onChange={(value) =>
+                    setCreateValues((prev) => ({
+                      ...prev,
+                      breastSize: value as CharacterBreastSize,
+                    }))
+                  }
+                  placeholder="Select breast size"
                   fullWidth
                 />
               </Field>

@@ -1,6 +1,10 @@
 import { apiFetch } from '@/app/api';
 import { buildApiError } from '@/app/api/apiErrors';
 import type {
+  CharacterBodyType,
+  CharacterBreastSize,
+  CharacterEthnicity,
+  CharacterHairColor,
   ICharacter,
   ICharacterDetails,
   RoleplayStage,
@@ -30,6 +34,10 @@ export type CharacterUpdateDto = {
   emoji: string;
   loraId: string;
   gender: string;
+  hairColor: CharacterHairColor;
+  ethnicity: CharacterEthnicity;
+  bodyType: CharacterBodyType;
+  breastSize: CharacterBreastSize;
   isActive: boolean;
   isFeatured?: boolean;
   description: string;
@@ -42,6 +50,10 @@ export type CharacterCreateDto = {
   emoji: string;
   loraId: string;
   gender: string;
+  hairColor: CharacterHairColor;
+  ethnicity: CharacterEthnicity;
+  bodyType: CharacterBodyType;
+  breastSize: CharacterBreastSize;
   description: string;
   avatarId: string;
   isFeatured?: boolean;
