@@ -4,6 +4,7 @@ export interface ScenarioData {
   personality: string;
   appearance: string;
   situation: string;
+  messagingStyle: string;
   stages: StageDirectivesMap;
 }
 

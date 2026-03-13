@@ -287,6 +287,14 @@ export function ScenarioGenDetailsPage() {
                 </div>
                 <div className={s.summaryItem}>
                   <Typography variant="meta" tone="muted">
+                    Messaging style
+                  </Typography>
+                  <Typography as="div" variant="body" className={s.richText}>
+                    {scenario.data.messagingStyle || '-'}
+                  </Typography>
+                </div>
+                <div className={s.summaryItem}>
+                  <Typography variant="meta" tone="muted">
                     Appearance
                   </Typography>
                   <Typography as="div" variant="body" className={s.richText}>
