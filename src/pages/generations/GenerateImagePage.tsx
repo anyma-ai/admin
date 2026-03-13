@@ -1,29 +1,48 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useQueries } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-import { useCharacterDetails, useCharacters } from '@/app/characters';
-import { useCreateImgGeneration } from '@/app/img-generations';
-import { useLoras } from '@/app/loras';
+import {
+  createImgGeneration,
+  getImgGenerationDetails,
+  useCreateImgGeneration,
+} from '@/app/img-generations';
 import {
   Alert,
+  Badge,
   Button,
+  Card,
   Container,
   Field,
   FormRow,
+  Grid,
   Select,
+  Skeleton,
   Stack,
   Textarea,
   Typography,
 } from '@/atoms';
-import { CharacterType, RoleplayStage, STAGES_IN_ORDER } from '@/common/types';
+import {
+  CharacterType,
+  type IImgGenerationDetails,
+  ImgGenerationStatus,
+  type ImgGenerationRequest,
+  RoleplayStage,
+  STAGES_IN_ORDER,
+} from '@/common/types';
 import { AppShell } from '@/components/templates';
 
+import { useCharacterDetails, useCharacters } from '@/app/characters';
+import { useLoras } from '@/app/loras';
 import { SearchSelect } from './components/SearchSelect';
+import type { GenerateImagePrefillState } from './generationReuse';
 import s from './GenerateImagePage.module.scss';
 
 const PAGE_SIZE = 50;
-
 const SEARCH_DEBOUNCE_MS = 300;
+const DEFAULT_BATCH_SIZE = 4;
+const MAX_BATCH_SIZE = 10;
+const BATCH_REQUEST_CONCURRENCY = 3;
 
 const STAGE_LABELS: Record<RoleplayStage, string> = {
   [RoleplayStage.Acquaintance]: 'Acquaintance',
@@ -39,6 +58,41 @@ const STAGE_LABELS: Record<RoleplayStage, string> = {
 const TYPE_LABELS: Record<CharacterType, string> = {
   [CharacterType.Realistic]: 'Realistic',
   [CharacterType.Anime]: 'Anime',
+};
+
+const BATCH_OPTIONS = Array.from({ length: MAX_BATCH_SIZE }, (_, index) => {
+  const value = String(index + 1);
+  return {
+    label: value,
+    value,
+  };
+});
+
+type GenerationFormValues = {
+  characterId: string;
+  scenarioId: string;
+  stage: RoleplayStage | '';
+  type: CharacterType | '';
+  mainLoraId: string;
+  secondLoraId: string;
+  userRequest: string;
+};
+
+type BatchItemState = 'queued' | 'submitting' | 'created' | 'failed';
+
+type GenerationBatchItem = {
+  clientId: string;
+  index: number;
+  createState: BatchItemState;
+  generationId?: string;
+  createError?: string;
+};
+
+type GenerationBatchSession = {
+  id: string;
+  size: number;
+  submittedAt: number;
+  items: GenerationBatchItem[];
 };
 
 function formatStage(stage: RoleplayStage) {
@@ -60,23 +114,102 @@ function useDebouncedValue<T>(value: T, delay: number) {
   return debounced;
 }
 
+function mergeSelectedOption(
+  options: Array<{ id: string; label: string; meta?: string }>,
+  selected:
+    | {
+        id: string;
+        label: string;
+        meta?: string;
+      }
+    | undefined,
+) {
+  if (!selected?.id) return options;
+  if (options.some((option) => option.id === selected.id)) return options;
+  return [selected, ...options];
+}
+
+function buildInitialValues(
+  prefill: GenerateImagePrefillState | null,
+): GenerationFormValues {
+  return {
+    characterId: prefill?.characterId ?? '',
+    scenarioId: prefill?.scenarioId ?? '',
+    stage: (prefill?.stage ?? '') as RoleplayStage | '',
+    type: (prefill?.type ?? '') as CharacterType | '',
+    mainLoraId: prefill?.mainLoraId ?? '',
+    secondLoraId: prefill?.secondLoraId ?? '',
+    userRequest: prefill?.userRequest ?? '',
+  };
+}
+
+function getBatchItemStatus(
+  item: GenerationBatchItem,
+  details: IImgGenerationDetails | undefined,
+  detailsError: string | undefined,
+) {
+  if (item.createState === 'failed') {
+    return {
+      label: 'Request failed',
+      tone: 'danger' as const,
+      outline: false,
+    };
+  }
+  if (item.createState === 'queued' || item.createState === 'submitting') {
+    return {
+      label: 'Starting',
+      tone: 'accent' as const,
+      outline: true,
+    };
+  }
+  if (detailsError) {
+    return {
+      label: 'Status unavailable',
+      tone: 'warning' as const,
+      outline: true,
+    };
+  }
+  if (details?.status === ImgGenerationStatus.Ready) {
+    return {
+      label: 'Ready',
+      tone: 'success' as const,
+      outline: false,
+    };
+  }
+  if (details?.status === ImgGenerationStatus.Failed) {
+    return {
+      label: 'Failed',
+      tone: 'danger' as const,
+      outline: false,
+    };
+  }
+  return {
+    label: 'Generating',
+    tone: 'warning' as const,
+    outline: true,
+  };
+}
+
 export function GenerateImagePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const createMutation = useCreateImgGeneration();
+  const prefill =
+    (location.state as { prefill?: GenerateImagePrefillState } | null)
+      ?.prefill ?? null;
 
-  const [values, setValues] = useState({
-    characterId: '',
-    scenarioId: '',
-    stage: '' as RoleplayStage | '',
-    type: '' as CharacterType | '',
-    mainLoraId: '',
-    secondLoraId: '',
-    userRequest: '',
-  });
+  const [values, setValues] = useState<GenerationFormValues>(() =>
+    buildInitialValues(prefill),
+  );
+  const [batchSize, setBatchSize] = useState(DEFAULT_BATCH_SIZE);
+  const [batchSession, setBatchSession] = useState<GenerationBatchSession | null>(
+    null,
+  );
+  const [isBatchSubmitting, setIsBatchSubmitting] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [characterSearch, setCharacterSearch] = useState('');
   const [mainLoraSearch, setMainLoraSearch] = useState('');
-  const [secondLoraSearch, setsecondLoraSearch] = useState('');
+  const [secondLoraSearch, setSecondLoraSearch] = useState('');
   const debouncedCharacterSearch = useDebouncedValue(
     characterSearch,
     SEARCH_DEBOUNCE_MS,
@@ -85,10 +218,11 @@ export function GenerateImagePage() {
     mainLoraSearch,
     SEARCH_DEBOUNCE_MS,
   );
-  const debouncedsecondLoraSearch = useDebouncedValue(
+  const debouncedSecondLoraSearch = useDebouncedValue(
     secondLoraSearch,
     SEARCH_DEBOUNCE_MS,
   );
+  const previousCharacterIdRef = useRef(values.characterId);
 
   const {
     data: characterData,
@@ -113,9 +247,9 @@ export function GenerateImagePage() {
   const {
     data: secondLoraData,
     error: secondLoraError,
-    isLoading: issecondLorasLoading,
+    isLoading: isSecondLorasLoading,
   } = useLoras({
-    search: debouncedsecondLoraSearch || undefined,
+    search: debouncedSecondLoraSearch || undefined,
     order: 'DESC',
     skip: 0,
     take: PAGE_SIZE,
@@ -125,11 +259,20 @@ export function GenerateImagePage() {
   );
 
   useEffect(() => {
-    if (!values.characterId) return;
-    setValues((prev) => ({
-      ...prev,
-      scenarioId: '',
-    }));
+    if (!values.characterId) {
+      previousCharacterIdRef.current = '';
+      return;
+    }
+    if (
+      previousCharacterIdRef.current &&
+      previousCharacterIdRef.current !== values.characterId
+    ) {
+      setValues((prev) => ({
+        ...prev,
+        scenarioId: '',
+      }));
+    }
+    previousCharacterIdRef.current = values.characterId;
   }, [values.characterId]);
 
   const scenarios = useMemo(
@@ -170,22 +313,19 @@ export function GenerateImagePage() {
     () =>
       Boolean(
         values.characterId &&
-        values.scenarioId &&
-        values.stage &&
-        values.type &&
-        (!values.secondLoraId || values.mainLoraId) &&
-        (!values.secondLoraId || values.mainLoraId !== values.secondLoraId) &&
-        values.userRequest.trim(),
+          values.scenarioId &&
+          values.stage &&
+          values.type &&
+          (!values.secondLoraId || values.mainLoraId) &&
+          (!values.secondLoraId ||
+            values.mainLoraId !== values.secondLoraId) &&
+          values.userRequest.trim(),
       ),
     [values],
   );
 
-  const handleSubmit = async () => {
-    if (!isValid) {
-      setShowErrors(true);
-      return;
-    }
-    const response = await createMutation.mutateAsync({
+  const requestPayload = useMemo<ImgGenerationRequest>(
+    () => ({
       characterId: values.characterId,
       scenarioId: values.scenarioId,
       stage: values.stage as RoleplayStage,
@@ -193,11 +333,125 @@ export function GenerateImagePage() {
       mainLoraId: values.mainLoraId || undefined,
       secondLoraId: values.secondLoraId || undefined,
       userRequest: values.userRequest.trim(),
-    });
-    if (response?.id) {
-      navigate(`/generations/${response.id}`);
+    }),
+    [values],
+  );
+
+  const batchQueries = useQueries({
+    queries: (batchSession?.items ?? []).map((item) => ({
+      queryKey: item.generationId
+        ? (['img-generation', item.generationId] as const)
+        : (['img-generation-batch', item.clientId] as const),
+      queryFn: () => getImgGenerationDetails(item.generationId ?? ''),
+      enabled: Boolean(item.generationId),
+      retry: 1,
+      refetchInterval: (query: { state: { data?: IImgGenerationDetails } }) => {
+        if (!item.generationId) return false;
+        const data = query.state.data;
+        return data &&
+          data.status !== ImgGenerationStatus.Ready &&
+          data.status !== ImgGenerationStatus.Failed
+          ? 5000
+          : data
+            ? false
+            : 5000;
+      },
+      refetchIntervalInBackground: true,
+    })),
+  });
+
+  const batchItems = useMemo(
+    () =>
+      (batchSession?.items ?? []).map((item, index) => {
+        const query = batchQueries[index];
+        const details = query?.data;
+        const detailsError =
+          query?.error instanceof Error
+            ? query.error.message
+            : query?.error
+              ? 'Unable to load generation status.'
+              : undefined;
+
+        return {
+          ...item,
+          details,
+          detailsError,
+          isStatusLoading:
+            Boolean(item.generationId) &&
+            Boolean((query?.isLoading || query?.isFetching) && !details),
+        };
+      }),
+    [batchQueries, batchSession],
+  );
+
+  const batchSummary = useMemo(() => {
+    if (!batchSession) return null;
+
+    let started = 0;
+    let ready = 0;
+    let generating = 0;
+    let failed = 0;
+    let requestErrors = 0;
+    let statusErrors = 0;
+
+    for (const item of batchItems) {
+      if (item.createState === 'failed') {
+        requestErrors += 1;
+        continue;
+      }
+
+      if (item.createState === 'created') {
+        started += 1;
+      }
+
+      if (item.detailsError) {
+        statusErrors += 1;
+        generating += 1;
+        continue;
+      }
+
+      if (item.details?.status === ImgGenerationStatus.Ready) {
+        ready += 1;
+        continue;
+      }
+
+      if (item.details?.status === ImgGenerationStatus.Failed) {
+        failed += 1;
+        continue;
+      }
+
+      if (item.createState === 'created') {
+        generating += 1;
+      }
     }
-  };
+
+    const completed = ready + failed + requestErrors;
+    const isComplete = completed === batchSession.size;
+    const hasIssues = failed > 0 || requestErrors > 0 || statusErrors > 0;
+
+    return {
+      total: batchSession.size,
+      started,
+      ready,
+      generating,
+      failed,
+      requestErrors,
+      statusErrors,
+      isComplete,
+      title: isComplete
+        ? hasIssues
+          ? 'Batch finished with issues'
+          : 'Batch finished'
+        : isBatchSubmitting
+          ? 'Starting batch'
+          : 'Batch in progress',
+      tone: hasIssues
+        ? ('warning' as const)
+        : isComplete
+          ? ('success' as const)
+          : ('info' as const),
+    };
+  }, [batchItems, batchSession, isBatchSubmitting]);
 
   const blockingError =
     characterError || mainLoraError || secondLoraError || detailsError;
@@ -206,42 +460,96 @@ export function GenerateImagePage() {
       ? blockingError.message
       : 'Unable to load generation data.';
 
-  const characterOptions = (characterData?.data ?? []).map((character) => ({
-    id: character.id,
-    label: character.name,
-    meta: character.id,
-  }));
-  const mainLoraOptions = [
-    {
-      id: '',
-      label: 'No main LoRA',
-      meta: undefined,
-    },
-    ...(mainLoraData?.data ?? []).map((lora) => ({
-      id: lora.id,
-      label: lora.fileName,
-      meta: lora.id,
+  const isSubmitting = createMutation.isPending || isBatchSubmitting;
+
+  const characterOptions = mergeSelectedOption(
+    (characterData?.data ?? []).map((character) => ({
+      id: character.id,
+      label: character.name,
+      meta: character.id,
     })),
-  ];
-  const secondLoraOptions = [
-    {
-      id: '',
-      label: 'No secondary LoRA',
-      meta: undefined,
-    },
-    ...(secondLoraData?.data ?? [])
-      .filter((lora) => lora.id !== values.mainLoraId)
-      .map((lora) => ({
+    prefill?.characterId &&
+      values.characterId === prefill.characterId &&
+      prefill.characterName
+      ? {
+          id: prefill.characterId,
+          label: prefill.characterName,
+          meta: prefill.characterId,
+        }
+      : undefined,
+  );
+
+  const scenarioOptions = mergeSelectedOption(
+    scenarios.map((scenario) => ({
+      id: scenario.id,
+      label: scenario.name,
+      meta: scenario.id,
+    })),
+    prefill?.scenarioId &&
+      values.characterId === prefill.characterId &&
+      values.scenarioId === prefill.scenarioId &&
+      prefill.scenarioName
+      ? {
+          id: prefill.scenarioId,
+          label: prefill.scenarioName,
+          meta: prefill.scenarioId,
+        }
+      : undefined,
+  ).map((scenario) => ({
+    label: scenario.label,
+    value: scenario.id,
+  }));
+
+  const mainLoraOptions = mergeSelectedOption(
+    [
+      {
+        id: '',
+        label: 'No main LoRA',
+        meta: undefined,
+      },
+      ...(mainLoraData?.data ?? []).map((lora) => ({
         id: lora.id,
         label: lora.fileName,
         meta: lora.id,
       })),
-  ];
+    ],
+    prefill?.mainLoraId &&
+      values.mainLoraId === prefill.mainLoraId &&
+      prefill.mainLoraName
+      ? {
+          id: prefill.mainLoraId,
+          label: prefill.mainLoraName,
+          meta: prefill.mainLoraId,
+        }
+      : undefined,
+  );
 
-  const scenarioOptions = scenarios.map((scenario) => ({
-    label: scenario.name,
-    value: scenario.id,
-  }));
+  const secondLoraOptions = mergeSelectedOption(
+    [
+      {
+        id: '',
+        label: 'No secondary LoRA',
+        meta: undefined,
+      },
+      ...(secondLoraData?.data ?? [])
+        .filter((lora) => lora.id !== values.mainLoraId)
+        .map((lora) => ({
+          id: lora.id,
+          label: lora.fileName,
+          meta: lora.id,
+        })),
+    ],
+    prefill?.secondLoraId &&
+      values.secondLoraId === prefill.secondLoraId &&
+      prefill.secondLoraName
+      ? {
+          id: prefill.secondLoraId,
+          label: prefill.secondLoraName,
+          meta: prefill.secondLoraId,
+        }
+      : undefined,
+  );
+
   const stageOptions = useMemo(
     () =>
       STAGES_IN_ORDER.map((stage) => ({
@@ -250,6 +558,7 @@ export function GenerateImagePage() {
       })),
     [],
   );
+
   const typeOptions = useMemo(
     () =>
       Object.values(CharacterType).map((type) => ({
@@ -259,6 +568,106 @@ export function GenerateImagePage() {
     [],
   );
 
+  const updateBatchItem = (
+    sessionId: string,
+    clientId: string,
+    updater: (item: GenerationBatchItem) => GenerationBatchItem,
+  ) => {
+    setBatchSession((previous) => {
+      if (!previous || previous.id !== sessionId) return previous;
+      return {
+        ...previous,
+        items: previous.items.map((item) =>
+          item.clientId === clientId ? updater(item) : item,
+        ),
+      };
+    });
+  };
+
+  const handleBatchSubmit = async () => {
+    const sessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const items = Array.from({ length: batchSize }, (_, index) => ({
+      clientId: `${sessionId}-${index + 1}`,
+      index: index + 1,
+      createState: 'queued' as const,
+    }));
+
+    setBatchSession({
+      id: sessionId,
+      size: batchSize,
+      submittedAt: Date.now(),
+      items,
+    });
+    setIsBatchSubmitting(true);
+
+    let nextIndex = 0;
+    const workerCount = Math.min(BATCH_REQUEST_CONCURRENCY, batchSize);
+
+    const runWorker = async () => {
+      while (true) {
+        const currentIndex = nextIndex;
+        nextIndex += 1;
+
+        if (currentIndex >= items.length) {
+          return;
+        }
+
+        const currentItem = items[currentIndex];
+        updateBatchItem(sessionId, currentItem.clientId, (item) => ({
+          ...item,
+          createState: 'submitting',
+          createError: undefined,
+        }));
+
+        try {
+          const response = await createImgGeneration(requestPayload);
+          updateBatchItem(sessionId, currentItem.clientId, (item) => ({
+            ...item,
+            createState: 'created',
+            generationId: response.id,
+            createError: undefined,
+          }));
+        } catch (error) {
+          updateBatchItem(sessionId, currentItem.clientId, (item) => ({
+            ...item,
+            createState: 'failed',
+            createError:
+              error instanceof Error
+                ? error.message
+                : 'Unable to start generation.',
+          }));
+        }
+      }
+    };
+
+    try {
+      await Promise.all(
+        Array.from({ length: workerCount }, () => runWorker()),
+      );
+    } finally {
+      setIsBatchSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!isValid) {
+      setShowErrors(true);
+      return;
+    }
+
+    setShowErrors(false);
+
+    if (batchSize === 1) {
+      const response = await createMutation.mutateAsync(requestPayload);
+      if (response?.id) {
+        navigate(`/generations/${response.id}`);
+      }
+      return;
+    }
+
+    await handleBatchSubmit();
+  };
+
   return (
     <AppShell>
       <Container size="wide" className={s.page}>
@@ -266,10 +675,49 @@ export function GenerateImagePage() {
           <div className={s.titleBlock}>
             <Typography variant="h2">Generate image</Typography>
           </div>
-          <Button variant="secondary" onClick={() => navigate('/generations')}>
+          <Button
+            variant="secondary"
+            onClick={() => navigate('/generations')}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
         </div>
+
+        {batchSummary ? (
+          <Alert
+            tone={batchSummary.tone}
+            title={batchSummary.title}
+            description={
+              <div className={s.batchSummary}>
+                <Typography variant="caption" tone="muted">
+                  Tracking {batchSummary.total} generations below.
+                </Typography>
+                <div className={s.batchSummaryBadges}>
+                  <Badge>Batch {batchSummary.total}</Badge>
+                  <Badge tone="accent" outline>
+                    Started {batchSummary.started}/{batchSummary.total}
+                  </Badge>
+                  <Badge tone="success">Ready {batchSummary.ready}</Badge>
+                  <Badge tone="warning" outline>
+                    Generating {batchSummary.generating}
+                  </Badge>
+                  <Badge tone="danger">Failed {batchSummary.failed}</Badge>
+                  {batchSummary.requestErrors > 0 ? (
+                    <Badge tone="danger">
+                      Request errors {batchSummary.requestErrors}
+                    </Badge>
+                  ) : null}
+                  {batchSummary.statusErrors > 0 ? (
+                    <Badge tone="warning" outline>
+                      Status errors {batchSummary.statusErrors}
+                    </Badge>
+                  ) : null}
+                </div>
+              </div>
+            }
+          />
+        ) : null}
 
         {blockingError ? (
           <Alert title="Unable to load data" description={errorMessage} />
@@ -292,7 +740,7 @@ export function GenerateImagePage() {
                   setValues((prev) => ({ ...prev, characterId: value }))
                 }
                 placeholder="Select character"
-                disabled={createMutation.isPending}
+                disabled={isSubmitting}
                 loading={isCharactersLoading}
                 invalid={Boolean(errors.characterId)}
               />
@@ -316,7 +764,7 @@ export function GenerateImagePage() {
                   setValues((prev) => ({ ...prev, scenarioId: value }))
                 }
                 fullWidth
-                disabled={!values.characterId || createMutation.isPending}
+                disabled={!values.characterId || isSubmitting}
                 invalid={Boolean(errors.scenarioId)}
               />
             </Field>
@@ -338,7 +786,7 @@ export function GenerateImagePage() {
                   }))
                 }
                 fullWidth
-                disabled={createMutation.isPending}
+                disabled={isSubmitting}
                 invalid={Boolean(errors.stage)}
               />
             </Field>
@@ -359,7 +807,7 @@ export function GenerateImagePage() {
                   }))
                 }
                 fullWidth
-                disabled={createMutation.isPending}
+                disabled={isSubmitting}
                 invalid={Boolean(errors.type)}
               />
             </Field>
@@ -385,7 +833,7 @@ export function GenerateImagePage() {
                   }))
                 }
                 placeholder="Select main LoRA"
-                disabled={createMutation.isPending}
+                disabled={isSubmitting}
                 loading={isMainLorasLoading}
                 invalid={Boolean(errors.mainLoraId)}
               />
@@ -400,7 +848,7 @@ export function GenerateImagePage() {
                 options={secondLoraOptions}
                 value={values.secondLoraId}
                 search={secondLoraSearch}
-                onSearchChange={setsecondLoraSearch}
+                onSearchChange={setSecondLoraSearch}
                 onSelect={(value) =>
                   setValues((prev) => ({ ...prev, secondLoraId: value }))
                 }
@@ -409,9 +857,23 @@ export function GenerateImagePage() {
                     ? 'Select secondary LoRA'
                     : 'Select main LoRA first'
                 }
-                disabled={!values.mainLoraId || createMutation.isPending}
-                loading={issecondLorasLoading}
+                disabled={!values.mainLoraId || isSubmitting}
+                loading={isSecondLorasLoading}
                 invalid={Boolean(errors.secondLoraId)}
+              />
+            </Field>
+          </FormRow>
+
+          <FormRow columns={3}>
+            <Field label="Batch" labelFor="generation-batch">
+              <Select
+                id="generation-batch"
+                size="sm"
+                options={BATCH_OPTIONS}
+                value={String(batchSize)}
+                onChange={(value) => setBatchSize(Number(value))}
+                fullWidth
+                disabled={isSubmitting}
               />
             </Field>
           </FormRow>
@@ -433,7 +895,7 @@ export function GenerateImagePage() {
               }
               placeholder="Describe what to generate..."
               fullWidth
-              disabled={createMutation.isPending}
+              disabled={isSubmitting}
             />
           </Field>
         </Stack>
@@ -441,12 +903,128 @@ export function GenerateImagePage() {
         <div className={s.actions}>
           <Button
             onClick={handleSubmit}
-            loading={createMutation.isPending}
-            disabled={!isValid || createMutation.isPending}
+            loading={isSubmitting}
+            disabled={!isValid || isSubmitting}
           >
-            Generate
+            {batchSize === 1 ? 'Generate' : `Generate ${batchSize}`}
           </Button>
         </div>
+
+        {batchSession ? (
+          <div className={s.resultsSection}>
+            <div className={s.resultsHeader}>
+              <Typography variant="h3">Batch results</Typography>
+              <Typography variant="caption" tone="muted">
+                Each tile updates automatically as generations finish.
+              </Typography>
+            </div>
+
+            <Grid columns={2} gap="16px" className={s.resultsGrid}>
+              {batchItems.map((item) => {
+                const status = getBatchItemStatus(
+                  item,
+                  item.details,
+                  item.detailsError,
+                );
+                const hasImage = Boolean(
+                  item.details?.status === ImgGenerationStatus.Ready &&
+                    item.details.file?.url,
+                );
+                const showSkeleton =
+                  item.createState === 'queued' ||
+                  item.createState === 'submitting' ||
+                  item.isStatusLoading ||
+                  item.details?.status === ImgGenerationStatus.Generating;
+
+                return (
+                  <Card key={item.clientId} padding="md" className={s.resultCard}>
+                    <div className={s.resultCardHeader}>
+                      <Typography variant="body">#{item.index}</Typography>
+                      <Badge tone={status.tone} outline={status.outline}>
+                        {status.label}
+                      </Badge>
+                    </div>
+
+                    <div className={s.resultPreview}>
+                      {hasImage ? (
+                        <img
+                          className={s.resultImage}
+                          src={item.details?.file?.url ?? ''}
+                          alt={`Generated result ${item.index}`}
+                          loading="lazy"
+                        />
+                      ) : showSkeleton ? (
+                        <Skeleton height="100%" />
+                      ) : item.createState === 'failed' ? (
+                        <div className={s.resultPlaceholder}>
+                          <Typography variant="caption" tone="muted">
+                            Request could not be started.
+                          </Typography>
+                        </div>
+                      ) : item.detailsError ? (
+                        <div className={s.resultPlaceholder}>
+                          <Typography variant="caption" tone="muted">
+                            Status is temporarily unavailable.
+                          </Typography>
+                        </div>
+                      ) : item.details?.status === ImgGenerationStatus.Failed ? (
+                        <div className={s.resultPlaceholder}>
+                          <Typography variant="caption" tone="muted">
+                            Generation failed.
+                          </Typography>
+                        </div>
+                      ) : (
+                        <div className={s.resultPlaceholder}>
+                          <Typography variant="caption" tone="muted">
+                            Waiting for image.
+                          </Typography>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={s.resultMeta}>
+                      <Typography variant="caption" tone="muted">
+                        {item.generationId ?? 'Starting request...'}
+                      </Typography>
+                      {item.createError ? (
+                        <Typography
+                          variant="caption"
+                          className={s.errorText}
+                          tone="muted"
+                        >
+                          {item.createError}
+                        </Typography>
+                      ) : null}
+                      {!item.createError && item.detailsError ? (
+                        <Typography
+                          variant="caption"
+                          className={s.errorText}
+                          tone="muted"
+                        >
+                          {item.detailsError}
+                        </Typography>
+                      ) : null}
+                    </div>
+
+                    <div className={s.resultActions}>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() =>
+                          item.generationId &&
+                          navigate(`/generations/${item.generationId}`)
+                        }
+                        disabled={!item.generationId}
+                      >
+                        Open
+                      </Button>
+                    </div>
+                  </Card>
+                );
+              })}
+            </Grid>
+          </div>
+        ) : null}
       </Container>
     </AppShell>
   );

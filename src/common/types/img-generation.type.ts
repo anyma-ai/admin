@@ -31,6 +31,7 @@ export interface IImgGeneration {
   secondLora?: ILora;
   scenario: IScenario;
   stage: RoleplayStage;
+  type?: CharacterType;
   status: ImgGenerationStatus;
   createdAt: string;
   updatedAt: string;

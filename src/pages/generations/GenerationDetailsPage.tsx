@@ -1,10 +1,11 @@
-import { TrashIcon } from '@radix-ui/react-icons';
+import { ReloadIcon, TrashIcon } from '@radix-ui/react-icons';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import {
   useDeleteImgGeneration,
   useImgGenerationDetails,
+  useRegenerateImgGeneration,
 } from '@/app/img-generations';
 import {
   Alert,
@@ -21,6 +22,7 @@ import { ImgGenerationStatus } from '@/common/types';
 import { ConfirmModal } from '@/components/molecules/confirm-modal/ConfirmModal';
 import { AppShell } from '@/components/templates';
 
+import type { GenerateImagePrefillState } from './generationReuse';
 import s from './GenerationDetailsPage.module.scss';
 
 const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
@@ -57,6 +59,7 @@ export function GenerationDetailsPage() {
     id ?? null,
   );
   const deleteMutation = useDeleteImgGeneration();
+  const regenerateMutation = useRegenerateImgGeneration();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const showSkeleton = isLoading && !data;
@@ -69,6 +72,31 @@ export function GenerationDetailsPage() {
   const showLatency =
     data?.status === ImgGenerationStatus.Ready && data?.latency;
 
+  const handleRegenerate = async () => {
+    if (!id || isGenerating || regenerateMutation.isPending) return;
+    await regenerateMutation.mutateAsync(id);
+  };
+
+  const handleReuse = () => {
+    if (!data) return;
+
+    const prefill: GenerateImagePrefillState = {
+      characterId: data.character.id,
+      characterName: data.character.name,
+      scenarioId: data.scenario.id,
+      scenarioName: data.scenario.name,
+      stage: data.stage,
+      type: data.type,
+      mainLoraId: data.mainLora?.id,
+      mainLoraName: data.mainLora?.fileName,
+      secondLoraId: data.secondLora?.id,
+      secondLoraName: data.secondLora?.fileName,
+      userRequest: data.userRequest,
+    };
+
+    navigate('/generations/new', { state: { prefill } });
+  };
+
   return (
     <AppShell>
       <Container size="wide" className={s.page}>
@@ -77,6 +105,9 @@ export function GenerationDetailsPage() {
             <Typography variant="h2">Generation</Typography>
           </div>
           <div className={s.headerActions}>
+            <Button variant="secondary" onClick={handleReuse} disabled={!data}>
+              Reuse
+            </Button>
             <IconButton
               aria-label="Delete generation"
               icon={<TrashIcon />}
@@ -134,6 +165,25 @@ export function GenerationDetailsPage() {
           <div className={s.content}>
             <div className={s.mediaColumn}>
               <div className={s.previewFrame}>
+                {data ? (
+                  <div className={s.previewActions}>
+                    <IconButton
+                      aria-label="Regenerate generation"
+                      icon={<ReloadIcon />}
+                      tooltip="Regenerate generation"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRegenerate}
+                      loading={regenerateMutation.isPending}
+                      disabled={
+                        !id ||
+                        isGenerating ||
+                        regenerateMutation.isPending ||
+                        deleteMutation.isPending
+                      }
+                    />
+                  </div>
+                ) : null}
                 {hasImage ? (
                   <img
                     className={s.preview}

@@ -3,6 +3,7 @@ export {
   useDeleteImgGeneration,
   useImgGenerationDetails,
   useImgGenerations,
+  useRegenerateImgGeneration,
 } from './queries';
 export type { ImgGenerationsListParams } from './imgGenerationsApi';
 export {
@@ -10,4 +11,5 @@ export {
   deleteImgGeneration,
   getImgGenerationDetails,
   getImgGenerations,
+  regenerateImgGeneration,
 } from './imgGenerationsApi';

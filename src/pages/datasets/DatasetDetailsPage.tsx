@@ -49,7 +49,7 @@ function formatDate(value: string | null | undefined) {
   return dateTimeFormatter.format(parsed);
 }
 
-function formatStyle(value: string | null | undefined) {
+function formatLabel(value: string | null | undefined) {
   if (!value) return '-';
   return value
     .split(/[_-]/g)
@@ -358,6 +358,8 @@ export function DatasetDetailsPage() {
               <Skeleton width={200} height={16} />
               <Skeleton width={140} height={12} />
               <Skeleton width={180} height={16} />
+              <Skeleton width={120} height={12} />
+              <Skeleton width={120} height={16} />
             </div>
             <Grid columns={3} gap={16}>
               {Array.from({ length: 6 }).map((_, index) => (
@@ -387,7 +389,12 @@ export function DatasetDetailsPage() {
               </Field>
               <Field label="Style">
                 <Typography variant="body" tone="muted">
-                  {formatStyle(data.style)}
+                  {formatLabel(data.style)}
+                </Typography>
+              </Field>
+              <Field label="Model">
+                <Typography variant="body" tone="muted">
+                  {formatLabel(data.model)}
                 </Typography>
               </Field>
               <Field label="Resolution">

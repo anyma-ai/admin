@@ -6,6 +6,11 @@ export enum DatasetResolution {
   high = '4K',
 }
 
+export enum DatasetModel {
+  Grok = 'grok',
+  Gemini = 'gemini',
+}
+
 export interface DatasetItemPrompt {
   id: string;
   meta: {
@@ -53,6 +58,7 @@ export interface IDataset {
   resolution: DatasetResolution;
   loraTriggerWord: string;
   itemsCount: number;
+  model: DatasetModel;
   createdAt: string;
   updatedAt: string;
 }
@@ -87,6 +93,7 @@ export interface CreateDatasetDto {
   resolution: DatasetResolution;
   style: DatasetStyle;
   refImgIds: string[];
+  model: DatasetModel;
 }
 
 export interface UpdateDatasetDto {

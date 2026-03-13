@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { notifyError, notifySuccess } from '@/app/toast';
 import { ImgGenerationStatus } from '@/common/types';
@@ -8,6 +8,7 @@ import {
   deleteImgGeneration,
   getImgGenerationDetails,
   getImgGenerations,
+  regenerateImgGeneration,
   type ImgGenerationsListParams,
 } from './imgGenerationsApi';
 
@@ -62,6 +63,24 @@ export function useDeleteImgGeneration() {
     },
     onError: (error) => {
       notifyError(error, 'Unable to delete the generation.');
+    },
+  });
+}
+
+export function useRegenerateImgGeneration() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: regenerateImgGeneration,
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['img-generations'] });
+      queryClient.invalidateQueries({
+        queryKey: imgGenerationKeys.details(id),
+      });
+      notifySuccess('Regenerating generation...', 'Generation regenerated.');
+    },
+    onError: (error) => {
+      notifyError(error, 'Unable to regenerate the generation.');
     },
   });
 }

@@ -27,6 +27,7 @@ import {
   Typography,
 } from '@/atoms';
 import {
+  DatasetModel,
   DatasetResolution,
   DatasetStyle,
   FileDir,
@@ -52,6 +53,7 @@ type CreateDatasetValues = {
   description: string;
   itemsCount: string;
   loraTriggerWord: string;
+  model: DatasetModel;
   resolution: DatasetResolution;
   style: DatasetStyle;
 };
@@ -72,6 +74,11 @@ const STYLE_OPTIONS = [
   { label: 'Photorealistic', value: DatasetStyle.Photorealistic },
   { label: 'Anime', value: DatasetStyle.Anime },
 ];
+const MODEL_OPTIONS = [
+  { label: 'Grok', value: DatasetModel.Grok },
+  { label: 'Gemini', value: DatasetModel.Gemini },
+];
+const DATASET_MODEL_VALUES = new Set(Object.values(DatasetModel));
 const DATASET_RESOLUTION_VALUES = new Set(Object.values(DatasetResolution));
 const DATASET_STYLE_VALUES = new Set(Object.values(DatasetStyle));
 const DEFAULT_ORDER = 'DESC';
@@ -101,6 +108,7 @@ const EMPTY_CREATE_VALUES: CreateDatasetValues = {
   description: '',
   itemsCount: String(MIN_ITEMS_COUNT),
   loraTriggerWord: '',
+  model: DatasetModel.Grok,
   resolution: DatasetResolution.low,
   style: DatasetStyle.Photorealistic,
 };
@@ -216,6 +224,10 @@ function isDatasetResolution(value: string): value is DatasetResolution {
 
 function isDatasetStyle(value: string): value is DatasetStyle {
   return DATASET_STYLE_VALUES.has(value as DatasetStyle);
+}
+
+function isDatasetModel(value: string): value is DatasetModel {
+  return DATASET_MODEL_VALUES.has(value as DatasetModel);
 }
 
 export function DatasetsPage() {
@@ -425,6 +437,7 @@ export function DatasetsPage() {
       description?: string;
       itemsCount?: string;
       loraTriggerWord?: string;
+      model?: string;
       style?: string;
       resolution?: string;
       refImgIds?: string;
@@ -454,6 +467,10 @@ export function DatasetsPage() {
       errors.loraTriggerWord = 'Enter a LoRA trigger word.';
     }
 
+    if (!isDatasetModel(createValues.model)) {
+      errors.model = 'Select a model.';
+    }
+
     if (!isDatasetStyle(createValues.style)) {
       errors.style = 'Select a style.';
     }
@@ -477,6 +494,7 @@ export function DatasetsPage() {
     createValues.description,
     parsedItemsCount,
     createValues.loraTriggerWord,
+    createValues.model,
     createValues.style,
     createValues.resolution,
     refImageIds.length,
@@ -489,6 +507,7 @@ export function DatasetsPage() {
         createValues.characterName.trim() &&
         createValues.description.trim() &&
         createValues.loraTriggerWord.trim() &&
+        isDatasetModel(createValues.model) &&
         isDatasetStyle(createValues.style) &&
         isDatasetResolution(createValues.resolution) &&
         parsedItemsCount !== null &&
@@ -502,6 +521,7 @@ export function DatasetsPage() {
       createValues.characterName,
       createValues.description,
       createValues.loraTriggerWord,
+      createValues.model,
       createValues.style,
       createValues.resolution,
       parsedItemsCount,
@@ -603,6 +623,7 @@ export function DatasetsPage() {
       loraTriggerWord: createValues.loraTriggerWord.trim()
         ? undefined
         : 'Enter a LoRA trigger word.',
+      model: isDatasetModel(createValues.model) ? undefined : 'Select a model.',
       style: isDatasetStyle(createValues.style) ? undefined : 'Select a style.',
       resolution: isDatasetResolution(createValues.resolution)
         ? undefined
@@ -620,6 +641,7 @@ export function DatasetsPage() {
       errors.description ||
       errors.itemsCount ||
       errors.loraTriggerWord ||
+      errors.model ||
       errors.style ||
       errors.resolution ||
       errors.refImgIds
@@ -634,6 +656,7 @@ export function DatasetsPage() {
       description: createValues.description.trim(),
       itemsCount: parsedItemsCount!,
       loraTriggerWord: createValues.loraTriggerWord.trim(),
+      model: createValues.model,
       style: createValues.style,
       resolution: createValues.resolution,
       refImgIds: refImageIds,
@@ -900,25 +923,46 @@ export function DatasetsPage() {
             </Field>
           </FormRow>
 
-          <Field
-            label="Style"
-            labelFor="dataset-create-style"
-            error={createValidationErrors.style}
-          >
-            <Select
-              id="dataset-create-style"
-              size="sm"
-              options={STYLE_OPTIONS}
-              value={createValues.style}
-              onChange={(value) =>
-                setCreateValues((prev) => ({
-                  ...prev,
-                  style: value as DatasetStyle,
-                }))
-              }
-              fullWidth
-            />
-          </Field>
+          <FormRow columns={2}>
+            <Field
+              label="Style"
+              labelFor="dataset-create-style"
+              error={createValidationErrors.style}
+            >
+              <Select
+                id="dataset-create-style"
+                size="sm"
+                options={STYLE_OPTIONS}
+                value={createValues.style}
+                onChange={(value) =>
+                  setCreateValues((prev) => ({
+                    ...prev,
+                    style: value as DatasetStyle,
+                  }))
+                }
+                fullWidth
+              />
+            </Field>
+            <Field
+              label="Model"
+              labelFor="dataset-create-model"
+              error={createValidationErrors.model}
+            >
+              <Select
+                id="dataset-create-model"
+                size="sm"
+                options={MODEL_OPTIONS}
+                value={createValues.model}
+                onChange={(value) =>
+                  setCreateValues((prev) => ({
+                    ...prev,
+                    model: value as DatasetModel,
+                  }))
+                }
+                fullWidth
+              />
+            </Field>
+          </FormRow>
 
           <Field
             label="Description"
