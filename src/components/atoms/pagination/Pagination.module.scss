@@ -29,3 +29,14 @@
   color: hsl(var(--fg-muted));
   cursor: not-allowed;
 }
+
+.ellipsis {
+  min-width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--fg-muted));
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
