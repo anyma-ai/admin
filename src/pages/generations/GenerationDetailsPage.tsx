@@ -18,12 +18,12 @@ import {
   Stack,
   Typography,
 } from '@/atoms';
-import { ImgGenerationStatus } from '@/common/types';
+import { ImgGenerationStatus, RoleplayStage } from '@/common/types';
 import { ConfirmModal } from '@/components/molecules/confirm-modal/ConfirmModal';
 import { AppShell } from '@/components/templates';
 
-import type { GenerateImagePrefillState } from './generationReuse';
 import s from './GenerationDetailsPage.module.scss';
+import type { GenerateImagePrefillState } from './generationReuse';
 
 const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
@@ -50,6 +50,10 @@ function formatStage(value: string | null | undefined) {
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+}
+
+function isSexStage(stage: string | null | undefined) {
+  return stage === RoleplayStage.Sex;
 }
 
 export function GenerationDetailsPage() {
@@ -92,6 +96,7 @@ export function GenerationDetailsPage() {
       secondLoraId: data.secondLora?.id,
       secondLoraName: data.secondLora?.fileName,
       userRequest: data.userRequest,
+      sexRequest: data.sexRequest,
     };
 
     navigate('/generations/new', { state: { prefill } });
@@ -205,12 +210,40 @@ export function GenerationDetailsPage() {
                 )}
               </div>
               <Stack gap="12px">
-                <div>
-                  <Typography variant="meta" tone="muted">
-                    Request
-                  </Typography>
-                  <Typography variant="body">{data.userRequest}</Typography>
-                </div>
+                {isSexStage(data.stage) ? (
+                  <div>
+                    <Typography variant="meta" tone="muted">
+                      Sex request
+                    </Typography>
+                    <Stack gap="8px">
+                      <div>
+                        <Typography variant="caption" tone="muted">
+                          Pose
+                        </Typography>
+                        <Typography variant="body">
+                          {data.sexRequest?.pose || '-'}
+                        </Typography>
+                      </div>
+                      <div>
+                        <Typography variant="caption" tone="muted">
+                          Details
+                        </Typography>
+                        <Typography variant="body">
+                          {data.sexRequest?.details || '-'}
+                        </Typography>
+                      </div>
+                    </Stack>
+                  </div>
+                ) : (
+                  <div>
+                    <Typography variant="meta" tone="muted">
+                      Request
+                    </Typography>
+                    <Typography variant="body">
+                      {data.userRequest || '-'}
+                    </Typography>
+                  </div>
+                )}
                 {data.prompt ? (
                   <div>
                     <Typography variant="meta" tone="muted">

@@ -25,6 +25,10 @@ import {
   LogsPage,
   LorasPage,
   PlansPage,
+  PoseCreatePage,
+  PoseFindSimilarPage,
+  PosesPage,
+  PoseUpdatePage,
   ProfilePage,
   PromptCreatePage,
   PromptsPage,
@@ -69,6 +73,10 @@ export function AppRoutes() {
         <Route path="/datasets/:id" element={<DatasetDetailsPage />} />
         <Route path="/logs" element={<LogsPage />} />
         <Route path="/loras" element={<LorasPage />} />
+        <Route path="/poses" element={<PosesPage />} />
+        <Route path="/poses/find-similar" element={<PoseFindSimilarPage />} />
+        <Route path="/poses/new" element={<PoseCreatePage />} />
+        <Route path="/poses/:id" element={<PoseUpdatePage />} />
         <Route path="/prompts" element={<PromptsPage />} />
         <Route path="/prompts/new" element={<PromptCreatePage />} />
         <Route path="/prompts/:id" element={<PromptUpdatePage />} />

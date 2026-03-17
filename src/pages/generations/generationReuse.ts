@@ -11,5 +11,9 @@ export type GenerateImagePrefillState = {
   mainLoraName?: string;
   secondLoraId?: string;
   secondLoraName?: string;
-  userRequest: string;
+  userRequest?: string;
+  sexRequest?: {
+    pose: string;
+    details: string;
+  };
 };

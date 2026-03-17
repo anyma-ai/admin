@@ -40,6 +40,7 @@ const navItems: NavItem[] = [
   { label: 'Chats', to: '/chats', icon: <SendIcon /> },
   { label: 'Broadcast', to: '/broadcast', icon: <RadioIcon /> },
   { label: 'Plans', to: '/plans', icon: <DollarSignIcon /> },
+  { label: 'Poses', to: '/poses', icon: <CircleDotIcon /> },
   { label: 'Prompts', to: '/prompts', icon: <MessageSquareQuoteIcon /> },
   { label: 'Scenario Gen', to: '/scenario-gen', icon: <AudioLinesIcon /> },
   { label: 'Datasets', to: '/datasets', icon: <CircleDotIcon /> },

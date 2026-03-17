@@ -20,7 +20,11 @@ export interface ImgGenerationRequest {
   characterId: string;
   scenarioId: string;
   stage: RoleplayStage;
-  userRequest: string;
+  userRequest?: string;
+  sexRequest?: {
+    pose: string;
+    details: string;
+  };
   type: CharacterType;
 }
 
@@ -39,7 +43,11 @@ export interface IImgGeneration {
 
 export interface IImgGenerationDetails extends IImgGeneration {
   prompt?: string;
-  userRequest: string;
+  userRequest?: string;
+  sexRequest?: {
+    pose: string;
+    details: string;
+  };
   file?: IFile;
   madeBy: IAdmin;
   latency?: {

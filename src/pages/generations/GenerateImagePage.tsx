@@ -2,11 +2,13 @@ import { useQueries } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+import { useCharacterDetails, useCharacters } from '@/app/characters';
 import {
   createImgGeneration,
   getImgGenerationDetails,
   useCreateImgGeneration,
 } from '@/app/img-generations';
+import { useLoras } from '@/app/loras';
 import {
   Alert,
   Badge,
@@ -16,6 +18,7 @@ import {
   Field,
   FormRow,
   Grid,
+  Input,
   Select,
   Skeleton,
   Stack,
@@ -25,18 +28,16 @@ import {
 import {
   CharacterType,
   type IImgGenerationDetails,
-  ImgGenerationStatus,
   type ImgGenerationRequest,
+  ImgGenerationStatus,
   RoleplayStage,
   STAGES_IN_ORDER,
 } from '@/common/types';
 import { AppShell } from '@/components/templates';
 
-import { useCharacterDetails, useCharacters } from '@/app/characters';
-import { useLoras } from '@/app/loras';
 import { SearchSelect } from './components/SearchSelect';
-import type { GenerateImagePrefillState } from './generationReuse';
 import s from './GenerateImagePage.module.scss';
+import type { GenerateImagePrefillState } from './generationReuse';
 
 const PAGE_SIZE = 50;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -76,6 +77,10 @@ type GenerationFormValues = {
   mainLoraId: string;
   secondLoraId: string;
   userRequest: string;
+  sexRequest: {
+    pose: string;
+    details: string;
+  };
 };
 
 type BatchItemState = 'queued' | 'submitting' | 'created' | 'failed';
@@ -101,6 +106,10 @@ function formatStage(stage: RoleplayStage) {
 
 function formatType(type: CharacterType) {
   return TYPE_LABELS[type] ?? type;
+}
+
+function isSexStage(stage: RoleplayStage | '') {
+  return stage === RoleplayStage.Sex;
 }
 
 function useDebouncedValue<T>(value: T, delay: number) {
@@ -140,7 +149,33 @@ function buildInitialValues(
     mainLoraId: prefill?.mainLoraId ?? '',
     secondLoraId: prefill?.secondLoraId ?? '',
     userRequest: prefill?.userRequest ?? '',
+    sexRequest: {
+      pose: prefill?.sexRequest?.pose ?? '',
+      details: prefill?.sexRequest?.details ?? '',
+    },
   };
+}
+
+function buildGenerationRequest(values: GenerationFormValues): ImgGenerationRequest {
+  const payload: ImgGenerationRequest = {
+    characterId: values.characterId,
+    scenarioId: values.scenarioId,
+    stage: values.stage as RoleplayStage,
+    type: values.type as CharacterType,
+    mainLoraId: values.mainLoraId || undefined,
+    secondLoraId: values.secondLoraId || undefined,
+  };
+
+  if (isSexStage(values.stage)) {
+    payload.sexRequest = {
+      pose: values.sexRequest.pose.trim(),
+      details: values.sexRequest.details.trim(),
+    };
+  } else {
+    payload.userRequest = values.userRequest.trim();
+  }
+
+  return payload;
 }
 
 function getBatchItemStatus(
@@ -279,6 +314,7 @@ export function GenerateImagePage() {
     () => (characterDetails ? characterDetails.scenarios : []),
     [characterDetails],
   );
+  const isSexRequestStage = isSexStage(values.stage);
 
   const errors = useMemo(() => {
     if (!showErrors) return {};
@@ -290,6 +326,8 @@ export function GenerateImagePage() {
       mainLoraId?: string;
       secondLoraId?: string;
       userRequest?: string;
+      sexPose?: string;
+      sexDetails?: string;
     } = {};
     if (!values.characterId) result.characterId = 'Select a character.';
     if (!values.scenarioId) result.scenarioId = 'Select a scenario.';
@@ -305,9 +343,16 @@ export function GenerateImagePage() {
     ) {
       result.secondLoraId = 'Secondary LoRA must differ from main LoRA.';
     }
-    if (!values.userRequest.trim()) result.userRequest = 'Enter a request.';
+    if (isSexRequestStage) {
+      if (!values.sexRequest.pose.trim()) result.sexPose = 'Enter a pose.';
+      if (!values.sexRequest.details.trim()) {
+        result.sexDetails = 'Enter details.';
+      }
+    } else if (!values.userRequest.trim()) {
+      result.userRequest = 'Enter a request.';
+    }
     return result;
-  }, [showErrors, values]);
+  }, [isSexRequestStage, showErrors, values]);
 
   const isValid = useMemo(
     () =>
@@ -319,21 +364,15 @@ export function GenerateImagePage() {
           (!values.secondLoraId || values.mainLoraId) &&
           (!values.secondLoraId ||
             values.mainLoraId !== values.secondLoraId) &&
-          values.userRequest.trim(),
+          (isSexRequestStage
+            ? values.sexRequest.pose.trim() && values.sexRequest.details.trim()
+            : values.userRequest.trim()),
       ),
-    [values],
+    [isSexRequestStage, values],
   );
 
   const requestPayload = useMemo<ImgGenerationRequest>(
-    () => ({
-      characterId: values.characterId,
-      scenarioId: values.scenarioId,
-      stage: values.stage as RoleplayStage,
-      type: values.type as CharacterType,
-      mainLoraId: values.mainLoraId || undefined,
-      secondLoraId: values.secondLoraId || undefined,
-      userRequest: values.userRequest.trim(),
-    }),
+    () => buildGenerationRequest(values),
     [values],
   );
 
@@ -878,26 +917,77 @@ export function GenerateImagePage() {
             </Field>
           </FormRow>
 
-          <Field
-            label="User request"
-            labelFor="generation-request"
-            error={errors.userRequest}
-          >
-            <Textarea
-              id="generation-request"
-              invalid={Boolean(errors.userRequest)}
-              value={values.userRequest}
-              onChange={(event) =>
-                setValues((prev) => ({
-                  ...prev,
-                  userRequest: event.target.value,
-                }))
-              }
-              placeholder="Describe what to generate..."
-              fullWidth
-              disabled={isSubmitting}
-            />
-          </Field>
+          {isSexRequestStage ? (
+            <FormRow columns={2}>
+              <Field
+                label="Pose"
+                labelFor="generation-sex-pose"
+                error={errors.sexPose}
+              >
+                <Input
+                  id="generation-sex-pose"
+                  invalid={Boolean(errors.sexPose)}
+                  value={values.sexRequest.pose}
+                  onChange={(event) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      sexRequest: {
+                        ...prev.sexRequest,
+                        pose: event.target.value,
+                      },
+                    }))
+                  }
+                  placeholder="Enter pose"
+                  fullWidth
+                  disabled={isSubmitting}
+                />
+              </Field>
+              <Field
+                label="Details"
+                labelFor="generation-sex-details"
+                error={errors.sexDetails}
+              >
+                <Input
+                  id="generation-sex-details"
+                  invalid={Boolean(errors.sexDetails)}
+                  value={values.sexRequest.details}
+                  onChange={(event) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      sexRequest: {
+                        ...prev.sexRequest,
+                        details: event.target.value,
+                      },
+                    }))
+                  }
+                  placeholder="Enter details"
+                  fullWidth
+                  disabled={isSubmitting}
+                />
+              </Field>
+            </FormRow>
+          ) : (
+            <Field
+              label="User request"
+              labelFor="generation-request"
+              error={errors.userRequest}
+            >
+              <Textarea
+                id="generation-request"
+                invalid={Boolean(errors.userRequest)}
+                value={values.userRequest}
+                onChange={(event) =>
+                  setValues((prev) => ({
+                    ...prev,
+                    userRequest: event.target.value,
+                  }))
+                }
+                placeholder="Describe what to generate..."
+                fullWidth
+                disabled={isSubmitting}
+              />
+            </Field>
+          )}
         </Stack>
 
         <div className={s.actions}>
