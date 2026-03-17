@@ -39,6 +39,7 @@ const navItems: NavItem[] = [
   { label: 'Users', to: '/users', icon: <UserIcon /> },
   { label: 'Chats', to: '/chats', icon: <SendIcon /> },
   { label: 'Broadcast', to: '/broadcast', icon: <RadioIcon /> },
+  { label: 'Batch Images', to: '/batch-images', icon: <ImageIcon /> },
   { label: 'Plans', to: '/plans', icon: <DollarSignIcon /> },
   { label: 'Poses', to: '/poses', icon: <CircleDotIcon /> },
   { label: 'Prompts', to: '/prompts', icon: <MessageSquareQuoteIcon /> },

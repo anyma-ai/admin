@@ -6,6 +6,8 @@ import {
   AnalyticsPage,
   AuthCallbackPage,
   AuthPage,
+  BatchImageDetailsPage,
+  BatchImagesPage,
   BroadcastPage,
   CharacterDetailsPage,
   CharacterImageDetailsPage,
@@ -61,6 +63,11 @@ export function AppRoutes() {
         />
         <Route path="/admins" element={<AdminsPage />} />
         <Route path="/broadcast" element={<BroadcastPage />} />
+        <Route path="/batch-images" element={<BatchImagesPage />} />
+        <Route
+          path="/batch-images/:id"
+          element={<BatchImageDetailsPage />}
+        />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/chats" element={<ChatsPage />} />
         <Route path="/chats/:id" element={<ChatDetailsPage />} />
