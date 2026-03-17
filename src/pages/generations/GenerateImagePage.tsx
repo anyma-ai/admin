@@ -156,7 +156,9 @@ function buildInitialValues(
   };
 }
 
-function buildGenerationRequest(values: GenerationFormValues): ImgGenerationRequest {
+function buildGenerationRequest(
+  values: GenerationFormValues,
+): ImgGenerationRequest {
   const payload: ImgGenerationRequest = {
     characterId: values.characterId,
     scenarioId: values.scenarioId,
@@ -237,9 +239,8 @@ export function GenerateImagePage() {
     buildInitialValues(prefill),
   );
   const [batchSize, setBatchSize] = useState(DEFAULT_BATCH_SIZE);
-  const [batchSession, setBatchSession] = useState<GenerationBatchSession | null>(
-    null,
-  );
+  const [batchSession, setBatchSession] =
+    useState<GenerationBatchSession | null>(null);
   const [isBatchSubmitting, setIsBatchSubmitting] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [characterSearch, setCharacterSearch] = useState('');
@@ -358,15 +359,14 @@ export function GenerateImagePage() {
     () =>
       Boolean(
         values.characterId &&
-          values.scenarioId &&
-          values.stage &&
-          values.type &&
-          (!values.secondLoraId || values.mainLoraId) &&
-          (!values.secondLoraId ||
-            values.mainLoraId !== values.secondLoraId) &&
-          (isSexRequestStage
-            ? values.sexRequest.pose.trim() && values.sexRequest.details.trim()
-            : values.userRequest.trim()),
+        values.scenarioId &&
+        values.stage &&
+        values.type &&
+        (!values.secondLoraId || values.mainLoraId) &&
+        (!values.secondLoraId || values.mainLoraId !== values.secondLoraId) &&
+        (isSexRequestStage
+          ? values.sexRequest.pose.trim() && values.sexRequest.details.trim()
+          : values.userRequest.trim()),
       ),
     [isSexRequestStage, values],
   );
@@ -680,9 +680,7 @@ export function GenerateImagePage() {
     };
 
     try {
-      await Promise.all(
-        Array.from({ length: workerCount }, () => runWorker()),
-      );
+      await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
     } finally {
       setIsBatchSubmitting(false);
     }
@@ -1018,7 +1016,7 @@ export function GenerateImagePage() {
                 );
                 const hasImage = Boolean(
                   item.details?.status === ImgGenerationStatus.Ready &&
-                    item.details.file?.url,
+                  item.details.file?.url,
                 );
                 const showSkeleton =
                   item.createState === 'queued' ||
@@ -1027,7 +1025,11 @@ export function GenerateImagePage() {
                   item.details?.status === ImgGenerationStatus.Generating;
 
                 return (
-                  <Card key={item.clientId} padding="md" className={s.resultCard}>
+                  <Card
+                    key={item.clientId}
+                    padding="md"
+                    className={s.resultCard}
+                  >
                     <div className={s.resultCardHeader}>
                       <Typography variant="body">#{item.index}</Typography>
                       <Badge tone={status.tone} outline={status.outline}>
@@ -1057,7 +1059,8 @@ export function GenerateImagePage() {
                             Status is temporarily unavailable.
                           </Typography>
                         </div>
-                      ) : item.details?.status === ImgGenerationStatus.Failed ? (
+                      ) : item.details?.status ===
+                        ImgGenerationStatus.Failed ? (
                         <div className={s.resultPlaceholder}>
                           <Typography variant="caption" tone="muted">
                             Generation failed.
@@ -1075,6 +1078,9 @@ export function GenerateImagePage() {
                     <div className={s.resultMeta}>
                       <Typography variant="caption" tone="muted">
                         {item.generationId ?? 'Starting request...'}
+                      </Typography>
+                      <Typography variant="caption" tone="muted">
+                        {item.details?.prompt}
                       </Typography>
                       {item.createError ? (
                         <Typography
