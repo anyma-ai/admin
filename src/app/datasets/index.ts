@@ -1,7 +1,13 @@
 export type { DatasetsListParams } from './datasetsApi';
-export { createDataset, getDatasetDetails, getDatasets } from './datasetsApi';
+export {
+  createDataset,
+  createDatasetFromImages,
+  getDatasetDetails,
+  getDatasets,
+} from './datasetsApi';
 export {
   useCreateDataset,
+  useCreateDatasetFromImages,
   useCreateDatasetItem,
   useDatasetDetails,
   useDatasets,

@@ -3,12 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notifyError, notifySuccess } from '@/app/toast';
 import type {
   CreateDatasetDto,
+  CreateFromImages,
   IDatasetDetails,
   UpdateDatasetDto,
 } from '@/common/types';
 
 import {
   createDataset,
+  createDatasetFromImages,
   createDatasetItem,
   type DatasetsListParams,
   deleteDataset,
@@ -73,6 +75,21 @@ export function useCreateDataset() {
     },
     onError: (error) => {
       notifyError(error, 'Unable to create the dataset.');
+    },
+  });
+}
+
+export function useCreateDatasetFromImages() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: CreateFromImages) => createDatasetFromImages(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['datasets'] });
+      notifySuccess('Dataset created.', 'Dataset created from images.');
+    },
+    onError: (error) => {
+      notifyError(error, 'Unable to create the dataset from images.');
     },
   });
 }

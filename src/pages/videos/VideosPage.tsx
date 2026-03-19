@@ -2,12 +2,11 @@ import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { useDatasets } from '@/app/datasets';
+import { useVideoGenerations } from '@/app/video-generations';
 import { PlusIcon } from '@/assets/icons';
 import {
   Alert,
   Button,
-  ButtonGroup,
   Container,
   EmptyState,
   Field,
@@ -19,14 +18,16 @@ import {
   Table,
   Typography,
 } from '@/atoms';
-import { type IDataset } from '@/common/types';
+import type { IVideoGenerationSet } from '@/common/types';
+import {
+  VideoAspectRatio,
+  VideoQuality,
+  VideoResolution,
+} from '@/common/types';
 import { AppShell } from '@/components/templates';
 
-import {
-  DatasetCreateDrawer,
-  type DatasetCreateMode,
-} from './components/DatasetCreateDrawer';
-import s from './DatasetsPage.module.scss';
+import { VideoCreateDrawer } from './components/VideoCreateDrawer';
+import s from './VideosPage.module.scss';
 
 type QueryUpdate = {
   search?: string;
@@ -69,14 +70,6 @@ function formatDate(value: string | null | undefined) {
   return dateTimeFormatter.format(parsed);
 }
 
-function formatStyle(value: string | null | undefined) {
-  if (!value) return '-';
-  return value
-    .split(/[_-]/g)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
 function parsePositiveNumber(value: string | null, fallback: number) {
   if (!value) return fallback;
   const parsed = Number(value);
@@ -89,7 +82,24 @@ function parsePageSize(value: string | null) {
   return PAGE_SIZE_OPTIONS.includes(parsed) ? parsed : DEFAULT_PAGE_SIZE;
 }
 
-export function DatasetsPage() {
+function formatQuality(value: VideoQuality) {
+  if (value === VideoQuality.Low) return 'Low';
+  if (value === VideoQuality.Medium) return 'Medium';
+  return 'High';
+}
+
+function formatResolution(value: VideoResolution) {
+  return `${value}p`;
+}
+
+function formatAspectRatio(value: VideoAspectRatio) {
+  if (value === VideoAspectRatio.Square) return 'Square';
+  if (value === VideoAspectRatio.Standard) return 'Standard';
+  if (value === VideoAspectRatio.Horizontal) return 'Horizontal';
+  return 'Vertical';
+}
+
+export function VideosPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const rawSearch = searchParams.get('search') ?? '';
@@ -100,8 +110,7 @@ export function DatasetsPage() {
   const [searchInput, setSearchInput] = useState(rawSearch);
   const debouncedSearch = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
   const normalizedSearch = debouncedSearch.trim();
-
-  const [createMode, setCreateMode] = useState<DatasetCreateMode>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const order = ORDER_VALUES.has(rawOrder ?? '') ? rawOrder! : DEFAULT_ORDER;
   const page = parsePositiveNumber(rawPage, 1);
@@ -168,9 +177,9 @@ export function DatasetsPage() {
     [normalizedSearch, order, page, pageSize],
   );
 
-  const { data, error, isLoading, refetch } = useDatasets(queryParams);
+  const { data, error, isLoading, refetch } = useVideoGenerations(queryParams);
 
-  const datasets = useMemo(() => data?.data ?? [], [data]);
+  const videos = useMemo(() => data?.data ?? [], [data]);
   const total = data?.total ?? 0;
   const effectiveTake = data?.take ?? pageSize;
   const effectiveSkip = data?.skip ?? (page - 1) * pageSize;
@@ -185,11 +194,12 @@ export function DatasetsPage() {
 
   const columns = useMemo(
     () => [
-      { key: 'dataset', label: 'Dataset' },
-      { key: 'character', label: 'Character' },
-      { key: 'style', label: 'Style' },
+      { key: 'name', label: 'Video' },
+      { key: 'quality', label: 'Quality' },
       { key: 'resolution', label: 'Resolution' },
-      { key: 'items', label: <span className={s.alignRight}>Items</span> },
+      { key: 'aspectRatio', label: 'Aspect ratio' },
+      { key: 'duration', label: <span className={s.alignRight}>Duration</span> },
+      { key: 'count', label: <span className={s.alignRight}>Count</span> },
       { key: 'updated', label: <span className={s.alignRight}>Updated</span> },
     ],
     [],
@@ -197,60 +207,67 @@ export function DatasetsPage() {
 
   const rows = useMemo(
     () =>
-      datasets.map((dataset) => ({
-        dataset: (
-          <div className={s.datasetCell}>
-            <Typography variant="body">{dataset.name}</Typography>
+      videos.map((video) => ({
+        name: (
+          <div className={s.nameCell}>
+            <Typography variant="body">{video.name}</Typography>
             <Typography variant="caption" tone="muted">
-              {dataset.id}
-            </Typography>
-            <Typography variant="caption" tone="muted">
-              {dataset.loraTriggerWord || '-'}
+              {video.id}
             </Typography>
           </div>
         ),
-        character: (
+        quality: (
           <Typography variant="body" tone="muted">
-            {dataset.characterName || '-'}
-          </Typography>
-        ),
-        style: (
-          <Typography variant="body" tone="muted">
-            {formatStyle(dataset.style)}
+            {formatQuality(video.quality)}
           </Typography>
         ),
         resolution: (
           <Typography variant="body" tone="muted">
-            {dataset.resolution || '-'}
+            {formatResolution(video.resolution)}
           </Typography>
         ),
-        items: (
+        aspectRatio: (
+          <Typography variant="body" tone="muted">
+            {formatAspectRatio(video.aspectRatio)}
+          </Typography>
+        ),
+        duration: (
           <Typography variant="caption" tone="muted" className={s.alignRight}>
-            {dataset.itemsCount.toLocaleString()}
+            {video.duration}s
+          </Typography>
+        ),
+        count: (
+          <Typography variant="caption" tone="muted" className={s.alignRight}>
+            {video.count.toLocaleString()}
           </Typography>
         ),
         updated: (
           <Typography variant="caption" tone="muted" className={s.alignRight}>
-            {formatDate(dataset.updatedAt)}
+            {formatDate(video.updatedAt)}
           </Typography>
         ),
       })),
-    [datasets],
+    [videos],
   );
 
   const skeletonRows = useMemo(
     () =>
       Array.from({ length: 6 }, (_, index) => ({
-        dataset: (
-          <div className={s.datasetCell} key={`dataset-skel-${index}`}>
+        name: (
+          <div className={s.nameCell} key={`video-skel-${index}`}>
             <Skeleton width={160} height={12} />
             <Skeleton width={120} height={10} />
           </div>
         ),
-        character: <Skeleton width={140} height={12} />,
-        style: <Skeleton width={90} height={12} />,
-        resolution: <Skeleton width={90} height={12} />,
-        items: (
+        quality: <Skeleton width={80} height={12} />,
+        resolution: <Skeleton width={80} height={12} />,
+        aspectRatio: <Skeleton width={90} height={12} />,
+        duration: (
+          <div className={s.alignRight}>
+            <Skeleton width={48} height={12} />
+          </div>
+        ),
+        count: (
           <div className={s.alignRight}>
             <Skeleton width={48} height={12} />
           </div>
@@ -265,16 +282,15 @@ export function DatasetsPage() {
   );
 
   const showSkeleton = isLoading && !data;
-  const showEmpty = !showSkeleton && !error && datasets.length === 0;
+  const showEmpty = !showSkeleton && !error && videos.length === 0;
   const showTable = !showEmpty && !error;
   const showFooter = showTable && !showSkeleton;
-
   const rangeStart = total === 0 ? 0 : effectiveSkip + 1;
   const rangeEnd =
     total === 0 ? 0 : Math.min(effectiveSkip + effectiveTake, total);
 
-  const openDetails = (dataset: IDataset) => {
-    navigate(`/datasets/${dataset.id}`);
+  const openDetails = (video: IVideoGenerationSet) => {
+    navigate(`/videos/${video.id}`);
   };
 
   return (
@@ -282,37 +298,28 @@ export function DatasetsPage() {
       <Container size="wide" className={s.page}>
         <div className={s.header}>
           <div className={s.titleBlock}>
-            <Typography variant="h2">Datasets</Typography>
+            <Typography variant="h2">Videos</Typography>
           </div>
-          <ButtonGroup>
-            <Button iconLeft={<PlusIcon />} onClick={() => setCreateMode('default')}>
-              New dataset
-            </Button>
-            <Button variant="secondary" onClick={() => setCreateMode('from-images')}>
-              Create from Images
-            </Button>
-          </ButtonGroup>
+          <Button iconLeft={<PlusIcon />} onClick={() => setIsCreateOpen(true)}>
+            New video
+          </Button>
         </div>
 
         <div className={s.filters}>
           <div className={s.filterRow}>
-            <Field
-              className={s.filterField}
-              label="Search"
-              labelFor="datasets-search"
-            >
+            <Field className={s.filterField} label="Search" labelFor="videos-search">
               <Input
-                id="datasets-search"
-                placeholder="Search by name or trigger word"
+                id="videos-search"
+                placeholder="Search by name"
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 iconLeft={<MagnifyingGlassIcon />}
                 fullWidth
               />
             </Field>
-            <Field label="Order" labelFor="datasets-order">
+            <Field label="Order" labelFor="videos-order">
               <Select
-                id="datasets-order"
+                id="videos-order"
                 options={ORDER_OPTIONS}
                 value={order}
                 size="sm"
@@ -328,7 +335,7 @@ export function DatasetsPage() {
         {error ? (
           <Stack className={s.state} gap="12px">
             <Alert
-              title="Unable to load datasets"
+              title="Unable to load videos"
               description={
                 error instanceof Error ? error.message : 'Please try again.'
               }
@@ -342,19 +349,9 @@ export function DatasetsPage() {
 
         {showEmpty ? (
           <EmptyState
-            title="No datasets found"
+            title="No videos found"
             description="Adjust your filters to see results."
-            action={
-              <ButtonGroup>
-                <Button onClick={() => setCreateMode('default')}>New dataset</Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => setCreateMode('from-images')}
-                >
-                  Create from Images
-                </Button>
-              </ButtonGroup>
-            }
+            action={<Button onClick={() => setIsCreateOpen(true)}>New video</Button>}
           />
         ) : null}
 
@@ -367,17 +364,17 @@ export function DatasetsPage() {
                 showSkeleton
                   ? undefined
                   : (_, index) => {
-                      const dataset = datasets[index];
-                      if (!dataset) return {};
+                      const video = videos[index];
+                      if (!video) return {};
                       return {
                         className: s.clickableRow,
                         role: 'link',
                         tabIndex: 0,
-                        onClick: () => openDetails(dataset),
+                        onClick: () => openDetails(video),
                         onKeyDown: (event) => {
                           if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
-                            openDetails(dataset);
+                            openDetails(video);
                           }
                         },
                       };
@@ -425,11 +422,12 @@ export function DatasetsPage() {
         ) : null}
       </Container>
 
-      <DatasetCreateDrawer
-        mode={createMode}
-        onClose={() => setCreateMode(null)}
-        onSuccess={(id) => navigate(`/datasets/${id}`)}
-      />
+      {isCreateOpen ? (
+        <VideoCreateDrawer
+          onClose={() => setIsCreateOpen(false)}
+          onSuccess={(id) => navigate(`/videos/${id}`)}
+        />
+      ) : null}
     </AppShell>
   );
 }

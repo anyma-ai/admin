@@ -41,6 +41,8 @@ import {
   ScenarioGenPage,
   UiKitPage,
   UsersPage,
+  VideoDetailsPage,
+  VideosPage,
 } from '@/pages';
 
 export function AppRoutes() {
@@ -78,6 +80,8 @@ export function AppRoutes() {
         <Route path="/gifts/:id" element={<GiftDetailsPage />} />
         <Route path="/datasets" element={<DatasetsPage />} />
         <Route path="/datasets/:id" element={<DatasetDetailsPage />} />
+        <Route path="/videos" element={<VideosPage />} />
+        <Route path="/videos/:id" element={<VideoDetailsPage />} />
         <Route path="/logs" element={<LogsPage />} />
         <Route path="/loras" element={<LorasPage />} />
         <Route path="/poses" element={<PosesPage />} />

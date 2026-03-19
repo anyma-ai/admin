@@ -78,7 +78,13 @@ export interface IDatasetItem {
   createdAt: string;
 }
 
+export enum DatasetCreationType {
+  FromScratch = 'from_scratch',
+  FromImages = 'from_images',
+}
+
 export interface IDatasetDetails extends IDataset {
+  creationType: DatasetCreationType.FromImages;
   items: IDatasetItem[];
   refImgs: IFile[];
   config?: IFile | null;
@@ -93,6 +99,17 @@ export interface CreateDatasetDto {
   resolution: DatasetResolution;
   style: DatasetStyle;
   refImgIds: string[];
+  model: DatasetModel;
+}
+
+export interface CreateFromImages {
+  name: string;
+  characterName: string;
+  description: string;
+  loraTriggerWord: string;
+  resolution: DatasetResolution;
+  style: DatasetStyle;
+  imgIds: string[];
   model: DatasetModel;
 }
 

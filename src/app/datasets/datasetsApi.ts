@@ -2,6 +2,7 @@ import { apiFetch } from '@/app/api';
 import { buildApiError } from '@/app/api/apiErrors';
 import type {
   CreateDatasetDto,
+  CreateFromImages,
   IDataset,
   IDatasetDetails,
   UpdateDatasetDto,
@@ -94,6 +95,18 @@ export async function getDatasetDetails(id: string) {
 
 export async function createDataset(payload: CreateDatasetDto) {
   const res = await apiFetch('/admin/datasets', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw await buildApiError(res, createFallbackError);
+  }
+  return (await res.json()) as IDatasetDetails;
+}
+
+export async function createDatasetFromImages(payload: CreateFromImages) {
+  const res = await apiFetch('/admin/datasets/from-images', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(payload),

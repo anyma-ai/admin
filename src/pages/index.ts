@@ -37,3 +37,5 @@ export { ScenarioGenDetailsPage } from './scenario-gen/ScenarioGenDetailsPage';
 export { ScenarioGenPage } from './scenario-gen/ScenarioGenPage';
 export { UiKitPage } from './ui/UiKitPage';
 export { UsersPage } from './users/UsersPage';
+export { VideoDetailsPage } from './videos/VideoDetailsPage';
+export { VideosPage } from './videos/VideosPage';
