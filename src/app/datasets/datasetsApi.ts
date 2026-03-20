@@ -106,7 +106,7 @@ export async function createDataset(payload: CreateDatasetDto) {
 }
 
 export async function createDatasetFromImages(payload: CreateFromImages) {
-  const res = await apiFetch('/admin/datasets/from-images', {
+  const res = await apiFetch('/admin/datasets/images', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(payload),

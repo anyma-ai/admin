@@ -31,6 +31,27 @@
   gap: var(--space-6);
 }
 
+.summaryLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.summaryColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.mediaColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
 .detailsGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -47,7 +68,7 @@
   border-radius: 8px;
   background: var(--color-bg-soft);
   overflow: hidden;
-  min-height: 220px;
+  min-height: 280px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -67,14 +88,14 @@
 }
 
 .itemList {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
 }
 
 .itemRow {
-  display: grid;
-  grid-template-columns: minmax(220px, 360px) minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -83,15 +104,34 @@
 }
 
 .itemPreview {
+  position: relative;
   width: 100%;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-bg-soft);
   overflow: hidden;
-  aspect-ratio: 9 / 16;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 320px;
+}
+
+.itemPreviewActions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition);
+}
+
+.itemRow:hover .itemPreviewActions,
+.itemRow:focus-within .itemPreviewActions {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .video {
@@ -111,7 +151,7 @@
 .itemMeta {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .itemMetaRow {
@@ -142,11 +182,15 @@
 }
 
 @media (max-width: 900px) {
+  .summaryLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .detailsGrid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .itemRow {
+  .itemList {
     grid-template-columns: minmax(0, 1fr);
   }
 }

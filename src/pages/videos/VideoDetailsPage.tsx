@@ -8,7 +8,7 @@ import {
   useUpdateVideoGeneration,
   useVideoGenerationDetails,
 } from '@/app/video-generations';
-import { DownloadIcon, PencilLineIcon, TrashIcon } from '@/assets/icons';
+import { PencilLineIcon, TrashIcon } from '@/assets/icons';
 import {
   Alert,
   Badge,
@@ -116,7 +116,9 @@ export function VideoDetailsPage() {
     data?.items.sort((a, b) => {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     }) ?? [];
-  const itemsLabel = data ? `Generated items (${items.length})` : 'Generated items';
+  const itemsLabel = data
+    ? `Generated items (${items.length})`
+    : 'Generated items';
 
   const showSkeleton = isLoading && !data;
   const showEmpty = !showSkeleton && !error && !data;
@@ -232,19 +234,26 @@ export function VideoDetailsPage() {
 
         {showSkeleton ? (
           <Stack className={s.content} gap="24px">
-            <div className={s.detailsGrid}>
-              <Skeleton width={160} height={12} />
-              <Skeleton width={220} height={16} />
-              <Skeleton width={140} height={12} />
-              <Skeleton width={180} height={16} />
-              <Skeleton width={120} height={12} />
-              <Skeleton width={120} height={16} />
-              <Skeleton width={140} height={12} />
-              <Skeleton width={180} height={16} />
-              <Skeleton width={120} height={12} />
-              <Skeleton width={200} height={16} />
+            <div className={s.summaryLayout}>
+              <div className={s.summaryColumn}>
+                <div className={s.detailsGrid}>
+                  <Skeleton width={160} height={12} />
+                  <Skeleton width={220} height={16} />
+                  <Skeleton width={140} height={12} />
+                  <Skeleton width={180} height={16} />
+                  <Skeleton width={120} height={12} />
+                  <Skeleton width={120} height={16} />
+                  <Skeleton width={140} height={12} />
+                  <Skeleton width={180} height={16} />
+                  <Skeleton width={120} height={12} />
+                  <Skeleton width={200} height={16} />
+                </div>
+                <Skeleton height={120} />
+              </div>
+              <div className={s.mediaColumn}>
+                <Skeleton height={320} />
+              </div>
             </div>
-            <Skeleton height={220} />
             {Array.from({ length: 3 }).map((_, index) => (
               <Skeleton key={`video-item-skel-${index}`} height={220} />
             ))}
@@ -253,68 +262,80 @@ export function VideoDetailsPage() {
 
         {data ? (
           <div className={s.content}>
-            <div className={s.detailsGrid}>
-              <Field label="Name">
-                <Typography variant="body">{data.name}</Typography>
-              </Field>
-              <Field label="Quality">
-                <Typography variant="body" tone="muted">
-                  {formatQuality(data.quality)}
-                </Typography>
-              </Field>
-              <Field label="Resolution">
-                <Typography variant="body" tone="muted">
-                  {data.resolution}p
-                </Typography>
-              </Field>
-              <Field label="Aspect ratio">
-                <Typography variant="body" tone="muted">
-                  {formatAspectRatio(data.aspectRatio)}
-                </Typography>
-              </Field>
-              <Field label="Duration">
-                <Typography variant="body">{data.duration}s</Typography>
-              </Field>
-              <Field label="Count">
-                <Typography variant="body">{data.count.toLocaleString()}</Typography>
-              </Field>
-              <Field label="High LoRA">
-                <Typography variant="body" tone="muted">
-                  {data.highLora?.fileName || '-'}
-                </Typography>
-              </Field>
-              <Field label="Low LoRA">
-                <Typography variant="body" tone="muted">
-                  {data.lowLora?.fileName || '-'}
-                </Typography>
-              </Field>
-              <Field label="Prompt" className={s.fullWidth}>
-                <Typography variant="body">{data.prompt || '-'}</Typography>
-              </Field>
-              <Field label="Updated">
-                <Typography variant="body">{formatDate(data.updatedAt)}</Typography>
-              </Field>
-              <Field label="Created">
-                <Typography variant="body">{formatDate(data.createdAt)}</Typography>
-              </Field>
-            </div>
-
-            <Field label="Start frame">
-              <div className={s.mediaFrame}>
-                {data.startFrame?.url ? (
-                  <img
-                    className={s.startFrame}
-                    src={data.startFrame.url}
-                    alt={data.startFrame.name}
-                    loading="lazy"
-                  />
-                ) : (
-                  <Typography variant="caption" tone="muted">
-                    No frame available.
-                  </Typography>
-                )}
+            <div className={s.summaryLayout}>
+              <div className={s.summaryColumn}>
+                <div className={s.detailsGrid}>
+                  <Field label="Name">
+                    <Typography variant="body">{data.name}</Typography>
+                  </Field>
+                  <Field label="Quality">
+                    <Typography variant="body" tone="muted">
+                      {formatQuality(data.quality)}
+                    </Typography>
+                  </Field>
+                  <Field label="Resolution">
+                    <Typography variant="body" tone="muted">
+                      {data.resolution}p
+                    </Typography>
+                  </Field>
+                  <Field label="Aspect ratio">
+                    <Typography variant="body" tone="muted">
+                      {formatAspectRatio(data.aspectRatio)}
+                    </Typography>
+                  </Field>
+                  <Field label="Duration">
+                    <Typography variant="body">{data.duration}s</Typography>
+                  </Field>
+                  <Field label="Count">
+                    <Typography variant="body">
+                      {data.count.toLocaleString()}
+                    </Typography>
+                  </Field>
+                  <Field label="High LoRA">
+                    <Typography variant="body" tone="muted">
+                      {data.highLora?.fileName || '-'}
+                    </Typography>
+                  </Field>
+                  <Field label="Low LoRA">
+                    <Typography variant="body" tone="muted">
+                      {data.lowLora?.fileName || '-'}
+                    </Typography>
+                  </Field>
+                  <Field label="Updated">
+                    <Typography variant="body">
+                      {formatDate(data.updatedAt)}
+                    </Typography>
+                  </Field>
+                  <Field label="Created">
+                    <Typography variant="body">
+                      {formatDate(data.createdAt)}
+                    </Typography>
+                  </Field>
+                </div>
+                <Field label="Prompt">
+                  <Typography variant="body">{data.prompt || '-'}</Typography>
+                </Field>
               </div>
-            </Field>
+
+              <div className={s.mediaColumn}>
+                <Field label="Start frame">
+                  <div className={s.mediaFrame}>
+                    {data.startFrame?.url ? (
+                      <img
+                        className={s.startFrame}
+                        src={data.startFrame.url}
+                        alt={data.startFrame.name}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <Typography variant="caption" tone="muted">
+                        No frame available.
+                      </Typography>
+                    )}
+                  </div>
+                </Field>
+              </div>
+            </div>
 
             <div className={s.itemsHeader}>
               <Typography variant="h3">{itemsLabel}</Typography>
@@ -347,6 +368,18 @@ export function VideoDetailsPage() {
                             : 'No video'}
                         </Typography>
                       )}
+                      <div className={s.itemPreviewActions}>
+                        <IconButton
+                          aria-label="Delete item"
+                          tooltip="Delete item"
+                          size="sm"
+                          variant="ghost"
+                          tone="danger"
+                          icon={<TrashIcon />}
+                          onClick={() => setItemToDelete(item)}
+                          disabled={deleteItemMutation.isPending}
+                        />
+                      </div>
                     </div>
 
                     <div className={s.itemBody}>
@@ -359,40 +392,22 @@ export function VideoDetailsPage() {
                             {item.id}
                           </Typography>
                         </div>
-                        <Field label="Created">
-                          <Typography variant="body">
-                            {formatDate(item.createdAt)}
-                          </Typography>
-                        </Field>
-                        <Field label="Updated">
-                          <Typography variant="body">
-                            {formatDate(item.updatedAt)}
-                          </Typography>
-                        </Field>
                       </div>
 
-                      <div className={s.itemActions}>
-                        {item.file?.url ? (
-                          <Button
-                            as="a"
-                            href={item.file.url}
-                            download={item.file.name}
-                            rel="noopener"
-                            variant="secondary"
-                            iconLeft={<DownloadIcon />}
-                          >
-                            Download
-                          </Button>
-                        ) : null}
-                        <Button
-                          variant="ghost"
-                          tone="danger"
-                          onClick={() => setItemToDelete(item)}
-                          disabled={deleteItemMutation.isPending}
-                        >
-                          Delete item
-                        </Button>
-                      </div>
+                      {/*<div className={s.itemActions}>*/}
+                      {/*  {item.file?.url ? (*/}
+                      {/*    <Button*/}
+                      {/*      as="a"*/}
+                      {/*      href={item.file.url}*/}
+                      {/*      download={item.file.name}*/}
+                      {/*      rel="noopener"*/}
+                      {/*      variant="secondary"*/}
+                      {/*      iconLeft={<DownloadIcon />}*/}
+                      {/*    >*/}
+                      {/*      Download*/}
+                      {/*    </Button>*/}
+                      {/*  ) : null}*/}
+                      {/*</div>*/}
                     </div>
                   </div>
                 ))}
@@ -425,7 +440,11 @@ export function VideoDetailsPage() {
           </div>
         }
       >
-        <Field label="Name" labelFor="video-edit-name" error={editValidationError}>
+        <Field
+          label="Name"
+          labelFor="video-edit-name"
+          error={editValidationError}
+        >
           <Input
             id="video-edit-name"
             size="sm"

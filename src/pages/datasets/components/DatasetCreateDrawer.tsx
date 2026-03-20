@@ -1,6 +1,6 @@
 import { Cross1Icon } from '@radix-ui/react-icons';
 import type { ChangeEvent } from 'react';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 
 import { isApiRequestError } from '@/app/api/apiErrors';
 import {
@@ -11,6 +11,7 @@ import { markFileUploaded, signUpload } from '@/app/files/filesApi';
 import { notifyError } from '@/app/toast';
 import { PlusIcon } from '@/assets/icons';
 import {
+  Badge,
   Button,
   Field,
   FormRow,
@@ -49,6 +50,14 @@ type CreateDatasetBaseValues = {
   model: DatasetModel;
   resolution: DatasetResolution;
   style: DatasetStyle;
+};
+
+type CreateImageUploadItem = {
+  id: string;
+  fileName: string;
+  status: 'uploading' | 'uploaded' | 'error';
+  uploadedFile: IFile | null;
+  message?: string;
 };
 
 const RESOLUTION_OPTIONS = [
@@ -97,6 +106,17 @@ const EMPTY_BASE_VALUES: CreateDatasetBaseValues = {
   resolution: DatasetResolution.low,
   style: DatasetStyle.Photorealistic,
 };
+
+function createUploadItemId() {
+  if (
+    typeof window !== 'undefined' &&
+    window.crypto &&
+    typeof window.crypto.randomUUID === 'function'
+  ) {
+    return window.crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 function parseItemsCount(value: string) {
   if (!value.trim()) return null;
@@ -183,6 +203,7 @@ export function DatasetCreateDrawer({
   const [images, setImages] = useState<IFile[]>([]);
   const [showErrors, setShowErrors] = useState(false);
   const [isImageUploading, setIsImageUploading] = useState(false);
+  const [createFiles, setCreateFiles] = useState<CreateImageUploadItem[]>([]);
   const [imageInputKey, setImageInputKey] = useState(0);
   const imageInputId = useId();
 
@@ -193,7 +214,26 @@ export function DatasetCreateDrawer({
   const isFromImages = mode === 'from-images';
   const isPending = createMutation.isPending || createFromImagesMutation.isPending;
   const parsedItemsCount = parseItemsCount(itemsCount);
-  const imageIds = useMemo(() => images.map((file) => file.id), [images]);
+  const uploadedCreateFiles = useMemo(
+    () =>
+      createFiles.filter(
+        (item) => item.status === 'uploaded' && Boolean(item.uploadedFile?.id),
+      ),
+    [createFiles],
+  );
+  const isUploadingCreateFiles = useMemo(
+    () => createFiles.some((item) => item.status === 'uploading'),
+    [createFiles],
+  );
+  const imageIds = useMemo(
+    () =>
+      isFromImages
+        ? uploadedCreateFiles
+            .map((item) => item.uploadedFile?.id)
+            .filter((id): id is string => Boolean(id))
+        : images.map((file) => file.id),
+    [images, isFromImages, uploadedCreateFiles],
+  );
   const maxImages = isFromImages ? undefined : MAX_REF_IMAGES;
 
   useEffect(() => {
@@ -201,10 +241,23 @@ export function DatasetCreateDrawer({
     setBaseValues(EMPTY_BASE_VALUES);
     setItemsCount(String(MIN_ITEMS_COUNT));
     setImages([]);
+    setCreateFiles([]);
     setShowErrors(false);
     setIsImageUploading(false);
     setImageInputKey((prev) => prev + 1);
   }, [isOpen, mode]);
+
+  const updateCreateFile = useCallback(
+    (
+      id: string,
+      updater: (item: CreateImageUploadItem) => CreateImageUploadItem,
+    ) => {
+      setCreateFiles((prev) =>
+        prev.map((item) => (item.id === id ? updater(item) : item)),
+      );
+    },
+    [],
+  );
 
   const validationErrors = useMemo(() => {
     if (!showErrors) return {};
@@ -281,14 +334,20 @@ export function DatasetCreateDrawer({
   };
 
   const removeImage = (id: string) => {
+    if (isFromImages) {
+      setCreateFiles((prev) => prev.filter((item) => item.id !== id));
+      return;
+    }
+
     setImages((prev) => prev.filter((file) => file.id !== id));
   };
 
   const handleAddImageClick = () => {
     if (
-      isImageUploading ||
+      (isFromImages ? isUploadingCreateFiles : isImageUploading) ||
       isPending ||
-      (typeof maxImages === 'number' && images.length >= maxImages)
+      (typeof maxImages === 'number' &&
+        (isFromImages ? imageIds.length : images.length) >= maxImages)
     ) {
       return;
     }
@@ -300,9 +359,79 @@ export function DatasetCreateDrawer({
   };
 
   const handleImageFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files ?? []);
     setImageInputKey((prev) => prev + 1);
 
+    if (files.length === 0) return;
+
+    if (isFromImages) {
+      if (isPending || isUploadingCreateFiles) return;
+
+      const queuedItems = files.map((file) => ({
+        id: createUploadItemId(),
+        fileName: file.name,
+        status: 'uploading',
+        uploadedFile: null,
+      })) satisfies CreateImageUploadItem[];
+      setCreateFiles((prev) => [...prev, ...queuedItems]);
+
+      let failedUploads = 0;
+      for (let index = 0; index < files.length; index += 1) {
+        const file = files[index];
+        const queuedItem = queuedItems[index];
+        if (!file || !queuedItem) continue;
+
+        if (!isAcceptedImageFile(file)) {
+          failedUploads += 1;
+          updateCreateFile(queuedItem.id, (item) => ({
+            ...item,
+            status: 'error',
+            message: 'Only PNG, JPG, JPEG, or WEBP files are allowed.',
+          }));
+          continue;
+        }
+
+        try {
+          const mime = resolveMimeType(file);
+          const { presigned, file: signedFile } = await signUpload({
+            fileName: file.name,
+            mime,
+            folder: FileDir.Public,
+          });
+
+          await uploadToPresigned(presigned, file);
+          const success = await markFileUploaded(signedFile.id);
+          if (!success) {
+            throw new Error('Unable to finalize upload.');
+          }
+
+          updateCreateFile(queuedItem.id, (item) => ({
+            ...item,
+            status: 'uploaded',
+            uploadedFile: { ...signedFile, status: FileStatus.UPLOADED },
+            message: undefined,
+          }));
+        } catch (error) {
+          failedUploads += 1;
+          updateCreateFile(queuedItem.id, (item) => ({
+            ...item,
+            status: 'error',
+            message: resolveUploadErrorMessage(error),
+          }));
+        }
+      }
+
+      if (failedUploads > 0) {
+        const failedLabel = failedUploads === 1 ? 'file failed' : 'files failed';
+        notifyError(
+          new Error(`${failedUploads} ${failedLabel} to upload.`),
+          'Unable to upload some images.',
+        );
+      }
+      return;
+    }
+
+    const file = files[0];
     if (!file) return;
     if (
       isImageUploading ||
@@ -385,6 +514,7 @@ export function DatasetCreateDrawer({
     typeof maxImages === 'number'
       ? `${imageIds.length}/${maxImages} uploaded`
       : `${imageIds.length} uploaded`;
+  const fromImagesItems = createFiles;
 
   return (
     <Drawer
@@ -597,16 +727,96 @@ export function DatasetCreateDrawer({
                 onClick={handleAddImageClick}
                 disabled={
                   isPending ||
-                  isImageUploading ||
-                  (typeof maxImages === 'number' && images.length >= maxImages)
+                  (isFromImages ? isUploadingCreateFiles : isImageUploading) ||
+                  (typeof maxImages === 'number' &&
+                    (isFromImages ? imageIds.length : images.length) >= maxImages)
                 }
               />
               <Typography variant="meta" tone="muted">
-                {isImageUploading ? 'Uploading image...' : addImageLabel}
+                {isFromImages
+                  ? isUploadingCreateFiles
+                    ? 'Uploading images...'
+                    : addImageLabel
+                  : isImageUploading
+                    ? 'Uploading image...'
+                    : addImageLabel}
               </Typography>
             </div>
 
-            {images.length === 0 ? (
+            {isFromImages ? (
+              fromImagesItems.length === 0 ? (
+                <div className={s.imageEmpty}>
+                  <Typography variant="caption" tone="muted">
+                    No images uploaded yet.
+                  </Typography>
+                </div>
+              ) : (
+                <div className={s.imageGrid}>
+                  {fromImagesItems.map((item) => (
+                    <div key={item.id} className={s.imageCard}>
+                      <div className={s.imagePreview}>
+                        {item.uploadedFile?.url ? (
+                          <img
+                            className={s.imagePreviewImage}
+                            src={item.uploadedFile.url}
+                            alt={item.fileName}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <Typography variant="caption" tone="muted">
+                            {item.status === 'uploading' ? 'Uploading...' : 'No preview'}
+                          </Typography>
+                        )}
+                        <div className={s.imageCardActions}>
+                          <IconButton
+                            aria-label="Remove image"
+                            tooltip="Remove"
+                            variant="ghost"
+                            tone="danger"
+                            size="sm"
+                            icon={<Cross1Icon />}
+                            onClick={() => removeImage(item.id)}
+                            disabled={isPending}
+                          />
+                        </div>
+                      </div>
+                      <Typography
+                        variant="caption"
+                        tone="muted"
+                        className={s.imageName}
+                      >
+                        {item.fileName}
+                      </Typography>
+                      <div className={s.imageMeta}>
+                        <Badge
+                          tone={
+                            item.status === 'uploaded'
+                              ? 'success'
+                              : item.status === 'error'
+                                ? 'danger'
+                                : 'accent'
+                          }
+                        >
+                          {item.status === 'uploaded'
+                            ? 'Uploaded'
+                            : item.status === 'error'
+                              ? 'Error'
+                              : 'Uploading'}
+                        </Badge>
+                        {item.message ? (
+                          <Typography
+                            variant="caption"
+                            className={s.imageMessageError}
+                          >
+                            {item.message}
+                          </Typography>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : images.length === 0 ? (
               <div className={s.imageEmpty}>
                 <Typography variant="caption" tone="muted">
                   No images uploaded yet.
@@ -658,11 +868,13 @@ export function DatasetCreateDrawer({
               id={imageInputId}
               type="file"
               accept={IMAGE_ACCEPT}
+              multiple={isFromImages}
               onChange={handleImageFileChange}
               disabled={
                 isPending ||
-                isImageUploading ||
-                (typeof maxImages === 'number' && images.length >= maxImages)
+                (isFromImages ? isUploadingCreateFiles : isImageUploading) ||
+                (typeof maxImages === 'number' &&
+                  (isFromImages ? imageIds.length : images.length) >= maxImages)
               }
               wrapperClassName={s.hiddenInputWrapper}
               className={s.hiddenInput}
