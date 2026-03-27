@@ -130,7 +130,7 @@ export function BatchImagesPage() {
       search: debouncedLoraSearch.trim() || undefined,
       order: 'DESC',
       skip: 0,
-      take: 20,
+      take: 100,
     }),
     [debouncedLoraSearch],
   );
@@ -302,7 +302,9 @@ export function BatchImagesPage() {
     return {
       name: createValues.name.trim() ? undefined : 'Enter a name.',
       count:
-        parsedCount !== null ? undefined : `Enter a value of ${MIN_COUNT} or more.`,
+        parsedCount !== null
+          ? undefined
+          : `Enter a value of ${MIN_COUNT} or more.`,
       prompt: createValues.prompt.trim() ? undefined : 'Enter a prompt.',
       loraId: createValues.loraId ? undefined : 'Select a LoRA.',
     };
@@ -330,7 +332,9 @@ export function BatchImagesPage() {
     const errors = {
       name: createValues.name.trim() ? undefined : 'Enter a name.',
       count:
-        parsedCount !== null ? undefined : `Enter a value of ${MIN_COUNT} or more.`,
+        parsedCount !== null
+          ? undefined
+          : `Enter a value of ${MIN_COUNT} or more.`,
       prompt: createValues.prompt.trim() ? undefined : 'Enter a prompt.',
       loraId: createValues.loraId ? undefined : 'Select a LoRA.',
     };
