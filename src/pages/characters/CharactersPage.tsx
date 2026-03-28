@@ -2,9 +2,7 @@ import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { useCharacters, useCreateCharacter } from '@/app/characters';
-import { useLoras } from '@/app/loras';
-import { notifyError } from '@/app/toast';
+import { useCharacters } from '@/app/characters';
 import { PlusIcon } from '@/assets/icons';
 import {
   Alert,
@@ -13,37 +11,18 @@ import {
   Container,
   EmptyState,
   Field,
-  FormRow,
   Input,
-  Modal,
   Pagination,
   Select,
   Skeleton,
   Stack,
-  Switch,
   Table,
-  Textarea,
   Typography,
 } from '@/atoms';
-import {
-  CharacterBodyType,
-  CharacterBreastSize,
-  CharacterEthnicity,
-  CharacterHairColor,
-  FileDir,
-  type IFile,
-} from '@/common/types';
-import { FileUpload } from '@/components/molecules';
 import { AppShell } from '@/components/templates';
 
-import {
-  BODY_TYPE_OPTIONS,
-  BREAST_SIZE_OPTIONS,
-  ETHNICITY_OPTIONS,
-  HAIR_COLOR_OPTIONS,
-} from './characterAttributeOptions';
 import s from './CharactersPage.module.scss';
-import { LoraSelect } from './components/LoraSelect';
+import { CharacterCreateDrawer } from './components/CharacterCreateDrawer';
 
 type QueryUpdate = {
   search?: string;
@@ -107,29 +86,9 @@ export function CharactersPage() {
   const rawPageSize = searchParams.get('pageSize');
 
   const [searchInput, setSearchInput] = useState(rawSearch);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const debouncedSearch = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
   const normalizedSearch = debouncedSearch.trim();
-  const createMutation = useCreateCharacter();
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [createValues, setCreateValues] = useState({
-    name: '',
-    emoji: '',
-    gender: 'female',
-    hairColor: CharacterHairColor.Blond,
-    ethnicity: CharacterEthnicity.Caucasian,
-    bodyType: CharacterBodyType.Average,
-    breastSize: CharacterBreastSize.Medium,
-    isFeatured: false,
-    loraId: '',
-    description: '',
-    avatarId: '',
-    promoImgId: '',
-  });
-  const [avatarFile, setAvatarFile] = useState<IFile | null>(null);
-  const [promoFile, setPromoFile] = useState<IFile | null>(null);
-  const [createShowErrors, setCreateShowErrors] = useState(false);
-  const [loraSearch, setLoraSearch] = useState('');
-  const debouncedLoraSearch = useDebouncedValue(loraSearch, 300);
 
   const order = ORDER_VALUES.has(rawOrder ?? '') ? rawOrder! : DEFAULT_ORDER;
   const page = parsePositiveNumber(rawPage, 1);
@@ -197,17 +156,6 @@ export function CharactersPage() {
   );
 
   const { data, error, isLoading, refetch } = useCharacters(queryParams);
-  const loraQueryParams = useMemo(
-    () => ({
-      search: debouncedLoraSearch || undefined,
-      order: 'DESC',
-      skip: 0,
-      take: 50,
-    }),
-    [debouncedLoraSearch],
-  );
-  const { data: loraData, isLoading: isLoraLoading } =
-    useLoras(loraQueryParams);
 
   const characters = useMemo(() => data?.data ?? [], [data?.data]);
   const total = data?.total ?? 0;
@@ -302,134 +250,6 @@ export function CharactersPage() {
   const rangeEnd =
     total === 0 ? 0 : Math.min(effectiveSkip + effectiveTake, total);
 
-  const loraOptions = useMemo(() => loraData?.data ?? [], [loraData?.data]);
-
-  const createValidationErrors = useMemo(() => {
-    if (!createShowErrors) return {};
-    const errors: {
-      name?: string;
-      loraId?: string;
-      hairColor?: string;
-      ethnicity?: string;
-      bodyType?: string;
-      breastSize?: string;
-    } = {};
-    if (!createValues.name.trim()) {
-      errors.name = 'Enter a name.';
-    }
-    if (!createValues.loraId) {
-      errors.loraId = 'Select a LoRA.';
-    }
-    if (!createValues.hairColor) {
-      errors.hairColor = 'Select a hair color.';
-    }
-    if (!createValues.ethnicity) {
-      errors.ethnicity = 'Select an ethnicity.';
-    }
-    if (!createValues.bodyType) {
-      errors.bodyType = 'Select a body type.';
-    }
-    if (!createValues.breastSize) {
-      errors.breastSize = 'Select a breast size.';
-    }
-    return errors;
-  }, [
-    createShowErrors,
-    createValues.bodyType,
-    createValues.breastSize,
-    createValues.ethnicity,
-    createValues.hairColor,
-    createValues.loraId,
-    createValues.name,
-  ]);
-
-  const createIsValid = useMemo(
-    () =>
-      Boolean(
-        createValues.name.trim() &&
-        createValues.loraId &&
-        createValues.hairColor &&
-        createValues.ethnicity &&
-        createValues.bodyType &&
-        createValues.breastSize,
-      ),
-    [
-      createValues.bodyType,
-      createValues.breastSize,
-      createValues.ethnicity,
-      createValues.hairColor,
-      createValues.loraId,
-      createValues.name,
-    ],
-  );
-
-  const openCreateModal = () => {
-    setCreateValues({
-      name: '',
-      emoji: '',
-      gender: 'female',
-      hairColor: CharacterHairColor.Blond,
-      ethnicity: CharacterEthnicity.Caucasian,
-      bodyType: CharacterBodyType.Average,
-      breastSize: CharacterBreastSize.Medium,
-      isFeatured: false,
-      loraId: '',
-      description: '',
-      avatarId: '',
-      promoImgId: '',
-    });
-    setAvatarFile(null);
-    setPromoFile(null);
-    setCreateShowErrors(false);
-    setLoraSearch('');
-    setIsCreateOpen(true);
-  };
-
-  const closeCreateModal = () => {
-    if (createMutation.isPending) return;
-    setIsCreateOpen(false);
-  };
-
-  const handleCreate = async () => {
-    const errors = {
-      name: createValues.name.trim() ? undefined : 'Enter a name.',
-      loraId: createValues.loraId ? undefined : 'Select a LoRA.',
-      hairColor: createValues.hairColor ? undefined : 'Select a hair color.',
-      ethnicity: createValues.ethnicity ? undefined : 'Select an ethnicity.',
-      bodyType: createValues.bodyType ? undefined : 'Select a body type.',
-      breastSize: createValues.breastSize ? undefined : 'Select a breast size.',
-    };
-    if (
-      errors.name ||
-      errors.loraId ||
-      errors.hairColor ||
-      errors.ethnicity ||
-      errors.bodyType ||
-      errors.breastSize
-    ) {
-      setCreateShowErrors(true);
-      return;
-    }
-    const result = await createMutation.mutateAsync({
-      name: createValues.name.trim(),
-      emoji: createValues.emoji.trim(),
-      gender: createValues.gender.trim(),
-      hairColor: createValues.hairColor,
-      ethnicity: createValues.ethnicity,
-      bodyType: createValues.bodyType,
-      breastSize: createValues.breastSize,
-      loraId: createValues.loraId,
-      description: createValues.description.trim(),
-      avatarId: createValues.avatarId,
-      isFeatured: createValues.isFeatured,
-      promoImgId: createValues.promoImgId || undefined,
-    });
-    setIsCreateOpen(false);
-    if (result?.id) {
-      navigate(`/characters/${result.id}`);
-    }
-  };
-
   return (
     <AppShell>
       <Container size="wide" className={s.page}>
@@ -437,7 +257,7 @@ export function CharactersPage() {
           <div className={s.titleBlock}>
             <Typography variant="h2">Characters</Typography>
           </div>
-          <Button iconLeft={<PlusIcon />} onClick={openCreateModal}>
+          <Button iconLeft={<PlusIcon />} onClick={() => setIsCreateOpen(true)}>
             Create character
           </Button>
         </div>
@@ -561,260 +381,10 @@ export function CharactersPage() {
           </div>
         ) : null}
 
-        <Modal
+        <CharacterCreateDrawer
           open={isCreateOpen}
-          title="Create character"
-          onClose={closeCreateModal}
-          actions={
-            <div className={s.modalActions}>
-              <Button
-                variant="secondary"
-                onClick={closeCreateModal}
-                disabled={createMutation.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCreate}
-                loading={createMutation.isPending}
-                disabled={
-                  !createIsValid ||
-                  createMutation.isPending ||
-                  Boolean(
-                    createValidationErrors.name ||
-                    createValidationErrors.loraId ||
-                    createValidationErrors.hairColor ||
-                    createValidationErrors.ethnicity ||
-                    createValidationErrors.bodyType ||
-                    createValidationErrors.breastSize,
-                  )
-                }
-              >
-                Create
-              </Button>
-            </div>
-          }
-        >
-          <Stack gap="16px">
-            <FormRow columns={2}>
-              <Field
-                label="Name"
-                labelFor="character-create-name"
-                error={createValidationErrors.name}
-              >
-                <Input
-                  id="character-create-name"
-                  size="sm"
-                  value={createValues.name}
-                  onChange={(event) =>
-                    setCreateValues((prev) => ({
-                      ...prev,
-                      name: event.target.value,
-                    }))
-                  }
-                  fullWidth
-                />
-              </Field>
-              <Field label="Emoji" labelFor="character-create-emoji">
-                <Input
-                  id="character-create-emoji"
-                  size="sm"
-                  value={createValues.emoji}
-                  onChange={(event) =>
-                    setCreateValues((prev) => ({
-                      ...prev,
-                      emoji: event.target.value,
-                    }))
-                  }
-                  fullWidth
-                />
-              </Field>
-            </FormRow>
-
-            <FormRow columns={2}>
-              <Field label="Gender" labelFor="character-create-gender">
-                <Select
-                  id="character-create-gender"
-                  size="sm"
-                  options={[
-                    { label: 'Female', value: 'female' },
-                    { label: 'Male', value: 'male' },
-                  ]}
-                  value={createValues.gender}
-                  onChange={(value) =>
-                    setCreateValues((prev) => ({ ...prev, gender: value }))
-                  }
-                  fullWidth
-                />
-              </Field>
-              <Field
-                label="Hair color"
-                labelFor="character-create-hair-color"
-                error={createValidationErrors.hairColor}
-              >
-                <Select
-                  id="character-create-hair-color"
-                  size="sm"
-                  options={HAIR_COLOR_OPTIONS}
-                  value={createValues.hairColor}
-                  onChange={(value) =>
-                    setCreateValues((prev) => ({
-                      ...prev,
-                      hairColor: value as CharacterHairColor,
-                    }))
-                  }
-                  placeholder="Select hair color"
-                  fullWidth
-                />
-              </Field>
-            </FormRow>
-
-            <FormRow columns={3}>
-              <Field
-                label="Ethnicity"
-                labelFor="character-create-ethnicity"
-                error={createValidationErrors.ethnicity}
-              >
-                <Select
-                  id="character-create-ethnicity"
-                  size="sm"
-                  options={ETHNICITY_OPTIONS}
-                  value={createValues.ethnicity}
-                  onChange={(value) =>
-                    setCreateValues((prev) => ({
-                      ...prev,
-                      ethnicity: value as CharacterEthnicity,
-                    }))
-                  }
-                  placeholder="Select ethnicity"
-                  fullWidth
-                />
-              </Field>
-              <Field
-                label="Body type"
-                labelFor="character-create-body-type"
-                error={createValidationErrors.bodyType}
-              >
-                <Select
-                  id="character-create-body-type"
-                  size="sm"
-                  options={BODY_TYPE_OPTIONS}
-                  value={createValues.bodyType}
-                  onChange={(value) =>
-                    setCreateValues((prev) => ({
-                      ...prev,
-                      bodyType: value as CharacterBodyType,
-                    }))
-                  }
-                  placeholder="Select body type"
-                  fullWidth
-                />
-              </Field>
-              <Field
-                label="Breast size"
-                labelFor="character-create-breast-size"
-                error={createValidationErrors.breastSize}
-              >
-                <Select
-                  id="character-create-breast-size"
-                  size="sm"
-                  options={BREAST_SIZE_OPTIONS}
-                  value={createValues.breastSize}
-                  onChange={(value) =>
-                    setCreateValues((prev) => ({
-                      ...prev,
-                      breastSize: value as CharacterBreastSize,
-                    }))
-                  }
-                  placeholder="Select breast size"
-                  fullWidth
-                />
-              </Field>
-              <Field label="Featured" labelFor="character-create-featured">
-                <Switch
-                  id="character-create-featured"
-                  checked={createValues.isFeatured}
-                  onChange={(event) =>
-                    setCreateValues((prev) => ({
-                      ...prev,
-                      isFeatured: event.target.checked,
-                    }))
-                  }
-                  label={createValues.isFeatured ? 'Featured' : 'Not featured'}
-                />
-              </Field>
-            </FormRow>
-
-            <Field
-              label="LoRA"
-              labelFor="character-create-lora"
-              error={createValidationErrors.loraId}
-            >
-              <LoraSelect
-                id="character-create-lora"
-                value={createValues.loraId}
-                options={loraOptions.map((lora) => ({
-                  id: lora.id,
-                  fileName: lora.fileName,
-                }))}
-                search={loraSearch}
-                onSearchChange={setLoraSearch}
-                onSelect={(value) =>
-                  setCreateValues((prev) => ({ ...prev, loraId: value }))
-                }
-                placeholder={isLoraLoading ? 'Loading LoRAs...' : 'Select LoRA'}
-                disabled={isLoraLoading}
-                loading={isLoraLoading}
-              />
-            </Field>
-
-            <Field label="Description" labelFor="character-create-description">
-              <Textarea
-                id="character-create-description"
-                size="sm"
-                value={createValues.description}
-                onChange={(event) =>
-                  setCreateValues((prev) => ({
-                    ...prev,
-                    description: event.target.value,
-                  }))
-                }
-                rows={4}
-                fullWidth
-              />
-            </Field>
-            <FileUpload
-              label="Avatar"
-              folder={FileDir.Public}
-              value={avatarFile}
-              onChange={(file) => {
-                setAvatarFile(file);
-                setCreateValues((prev) => ({
-                  ...prev,
-                  avatarId: file?.id ?? '',
-                }));
-              }}
-              onError={(message) =>
-                notifyError(new Error(message), 'Unable to upload avatar.')
-              }
-            />
-            <FileUpload
-              label="Promo image"
-              folder={FileDir.Public}
-              value={promoFile}
-              onChange={(file) => {
-                setPromoFile(file);
-                setCreateValues((prev) => ({
-                  ...prev,
-                  promoImgId: file?.id ?? '',
-                }));
-              }}
-              onError={(message) =>
-                notifyError(new Error(message), 'Unable to upload image.')
-              }
-            />
-          </Stack>
-        </Modal>
+          onOpenChange={setIsCreateOpen}
+        />
       </Container>
     </AppShell>
   );
