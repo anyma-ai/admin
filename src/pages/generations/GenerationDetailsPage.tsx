@@ -7,6 +7,7 @@ import {
   useImgGenerationDetails,
   useRegenerateImgGeneration,
 } from '@/app/img-generations';
+import { usePosePromptDetails } from '@/app/pose-prompts';
 import { DownloadIcon } from '@/assets/icons';
 import {
   Alert,
@@ -20,6 +21,7 @@ import {
   Typography,
 } from '@/atoms';
 import { ImgGenerationStatus, RoleplayStage } from '@/common/types';
+import { formatPhotoAngle, formatSexPose, formatSexType } from '@/common/utils';
 import { ConfirmModal } from '@/components/molecules/confirm-modal/ConfirmModal';
 import { AppShell } from '@/components/templates';
 
@@ -63,6 +65,10 @@ export function GenerationDetailsPage() {
   const { data, error, isLoading, refetch } = useImgGenerationDetails(
     id ?? null,
   );
+  const { data: posePromptDetails } = usePosePromptDetails(
+    data?.sexPoseId ?? null,
+    Boolean(data?.sexPoseId),
+  );
   const deleteMutation = useDeleteImgGeneration();
   const regenerateMutation = useRegenerateImgGeneration();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -97,7 +103,8 @@ export function GenerationDetailsPage() {
       secondLoraId: data.secondLora?.id,
       secondLoraName: data.secondLora?.fileName,
       userRequest: data.userRequest,
-      sexRequest: data.sexRequest,
+      sexPoseId: data.sexPoseId,
+      sexPoseName: posePromptDetails?.name,
     };
 
     navigate('/generations/new', { state: { prefill } });
@@ -232,28 +239,48 @@ export function GenerationDetailsPage() {
                     <Stack gap="8px">
                       <div>
                         <Typography variant="caption" tone="muted">
-                          Pose
+                          Pose prompt
                         </Typography>
                         <Typography variant="body">
-                          {data.sexRequest?.pose || '-'}
+                          {posePromptDetails?.name || data.sexPoseId || '-'}
                         </Typography>
                       </div>
-                      <div>
-                        <Typography variant="caption" tone="muted">
-                          Angle
-                        </Typography>
-                        <Typography variant="body">
-                          {data.sexRequest?.angle || '-'}
-                        </Typography>
-                      </div>
-                      <div>
-                        <Typography variant="caption" tone="muted">
-                          Details
-                        </Typography>
-                        <Typography variant="body">
-                          {data.sexRequest?.details || '-'}
-                        </Typography>
-                      </div>
+                      {posePromptDetails ? (
+                        <>
+                          <div>
+                            <Typography variant="caption" tone="muted">
+                              Sex type
+                            </Typography>
+                            <Typography variant="body">
+                              {formatSexType(posePromptDetails.sexType)}
+                            </Typography>
+                          </div>
+                          <div>
+                            <Typography variant="caption" tone="muted">
+                              Pose
+                            </Typography>
+                            <Typography variant="body">
+                              {formatSexPose(posePromptDetails.pose)}
+                            </Typography>
+                          </div>
+                          <div>
+                            <Typography variant="caption" tone="muted">
+                              Angle
+                            </Typography>
+                            <Typography variant="body">
+                              {formatPhotoAngle(posePromptDetails.angle)}
+                            </Typography>
+                          </div>
+                        </>
+                      ) : null}
+                      {data.sexPoseId ? (
+                        <div>
+                          <Typography variant="caption" tone="muted">
+                            Pose prompt ID
+                          </Typography>
+                          <Typography variant="body">{data.sexPoseId}</Typography>
+                        </div>
+                      ) : null}
                     </Stack>
                   </div>
                 ) : (

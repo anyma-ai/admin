@@ -19,6 +19,10 @@
   gap: var(--space-1);
 }
 
+.hiddenInput {
+  display: none;
+}
+
 .filters {
   display: flex;
   flex-direction: column;

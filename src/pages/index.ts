@@ -25,7 +25,6 @@ export { LogsPage } from './logs/LogsPage';
 export { LorasPage } from './loras/LorasPage';
 export { PlansPage } from './plans/PlansPage';
 export { PoseCreatePage } from './poses/PoseCreatePage';
-export { PoseFindSimilarPage } from './poses/PoseFindSimilarPage';
 export { PosesPage } from './poses/PosesPage';
 export { PoseUpdatePage } from './poses/PoseUpdatePage';
 export { ProfilePage } from './profile/ProfilePage';

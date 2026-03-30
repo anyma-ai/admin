@@ -28,7 +28,6 @@ import {
   LorasPage,
   PlansPage,
   PoseCreatePage,
-  PoseFindSimilarPage,
   PosesPage,
   PoseUpdatePage,
   ProfilePage,
@@ -85,7 +84,6 @@ export function AppRoutes() {
         <Route path="/logs" element={<LogsPage />} />
         <Route path="/loras" element={<LorasPage />} />
         <Route path="/poses" element={<PosesPage />} />
-        <Route path="/poses/find-similar" element={<PoseFindSimilarPage />} />
         <Route path="/poses/new" element={<PoseCreatePage />} />
         <Route path="/poses/:id" element={<PoseUpdatePage />} />
         <Route path="/prompts" element={<PromptsPage />} />

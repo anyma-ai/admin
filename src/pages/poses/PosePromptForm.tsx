@@ -1,10 +1,16 @@
-import { Field, FormRow, Input, Textarea } from '@/atoms';
+import { Field, FormRow, Input, Select, Textarea } from '@/atoms';
+import { PhotoAngle, SexPose, SexType } from '@/common/types';
+import {
+  photoAngleOptions,
+  sexPoseOptions,
+  sexTypeOptions,
+} from '@/common/utils';
 
 export type PosePromptFormValues = {
-  name: string;
-  pose: string;
-  angle: string;
-  details: string;
+  idx: string;
+  sexType: SexType | '';
+  pose: SexPose | '';
+  angle: PhotoAngle | '';
   prompt: string;
 };
 
@@ -27,56 +33,70 @@ export function PosePromptForm({
 }: PosePromptFormProps) {
   return (
     <>
-      <FormRow columns={3}>
-        <Field label="Name" labelFor="pose-name" error={errors.name}>
+      <FormRow columns={2}>
+        <Field label="Index" labelFor="pose-idx" error={errors.idx}>
           <Input
-            id="pose-name"
+            id="pose-idx"
             size="sm"
-            value={values.name}
-            onChange={(event) => onChange('name', event.target.value)}
+            type="number"
+            min={0}
+            step={1}
+            inputMode="numeric"
+            value={values.idx}
+            onChange={(event) => onChange('idx', event.target.value)}
+            placeholder="0"
             disabled={disabled}
             fullWidth
           />
         </Field>
 
         <Field label="Pose" labelFor="pose-meta-pose" error={errors.pose}>
-          <Input
+          <Select
             id="pose-meta-pose"
             size="sm"
             value={values.pose}
-            onChange={(event) => onChange('pose', event.target.value)}
-            disabled={disabled}
-            fullWidth
-          />
-        </Field>
-
-        <Field label="Angle" labelFor="pose-meta-angle" error={errors.angle}>
-          <Input
-            id="pose-meta-angle"
-            size="sm"
-            value={values.angle}
-            onChange={(event) => onChange('angle', event.target.value)}
+            options={sexPoseOptions}
+            onChange={(value) =>
+              onChange('pose', value as PosePromptFormValues['pose'])
+            }
+            placeholder="Select pose"
             disabled={disabled}
             fullWidth
           />
         </Field>
       </FormRow>
 
-      <Field
-        label="Details"
-        labelFor="pose-meta-details"
-        error={errors.details}
-      >
-        <Textarea
-          id="pose-meta-details"
-          size="sm"
-          value={values.details}
-          onChange={(event) => onChange('details', event.target.value)}
-          rows={2}
-          disabled={disabled}
-          fullWidth
-        />
-      </Field>
+      <FormRow columns={2}>
+        <Field label="Sex type" labelFor="pose-sex-type" error={errors.sexType}>
+          <Select
+            id="pose-sex-type"
+            size="sm"
+            value={values.sexType}
+            options={sexTypeOptions}
+            onChange={(value) =>
+              onChange('sexType', value as PosePromptFormValues['sexType'])
+            }
+            placeholder="Select sex type"
+            disabled={disabled}
+            fullWidth
+          />
+        </Field>
+
+        <Field label="Angle" labelFor="pose-meta-angle" error={errors.angle}>
+          <Select
+            id="pose-meta-angle"
+            size="sm"
+            value={values.angle}
+            options={photoAngleOptions}
+            onChange={(value) =>
+              onChange('angle', value as PosePromptFormValues['angle'])
+            }
+            placeholder="Select angle"
+            disabled={disabled}
+            fullWidth
+          />
+        </Field>
+      </FormRow>
 
       <Field label="Prompt" labelFor="pose-prompt" error={errors.prompt}>
         <Textarea

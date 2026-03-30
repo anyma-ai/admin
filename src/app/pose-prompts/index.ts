@@ -1,11 +1,7 @@
-export type {
-  FindSimilarPosePromptDto,
-  PosePromptsListParams,
-} from './posePromptsApi';
+export type { PosePromptsListParams } from './posePromptsApi';
 export {
   createPosePrompt,
   deletePosePrompt,
-  findSimilarPosePrompt,
   getPosePromptDetails,
   getPosePrompts,
   updatePosePrompt,
@@ -13,7 +9,6 @@ export {
 export {
   useCreatePosePrompt,
   useDeletePosePrompt,
-  useFindSimilarPosePrompt,
   usePosePromptDetails,
   usePosePrompts,
   useUpdatePosePrompt,

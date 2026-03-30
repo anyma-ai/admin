@@ -15,18 +15,11 @@ export type PosePromptsListParams = {
   take?: number;
 };
 
-export type FindSimilarPosePromptDto = {
-  pose: string;
-  details: string;
-  angle: string;
-};
-
 const fallbackError = 'Unable to load poses.';
 const createFallbackError = 'Unable to create the pose.';
 const updateFallbackError = 'Unable to update the pose.';
 const detailsFallbackError = 'Unable to load the pose.';
 const deleteFallbackError = 'Unable to delete the pose.';
-const findSimilarFallbackError = 'Unable to find a similar pose.';
 
 export async function getPosePrompts(params: PosePromptsListParams) {
   const query = new URLSearchParams();
@@ -81,16 +74,4 @@ export async function deletePosePrompt(id: string) {
   if (!res.ok) {
     throw await buildApiError(res, deleteFallbackError);
   }
-}
-
-export async function findSimilarPosePrompt(payload: FindSimilarPosePromptDto) {
-  const res = await apiFetch('/admin/pose-prompts/similar', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    throw await buildApiError(res, findSimilarFallbackError);
-  }
-  return (await res.json()) as IPosePrompt;
 }

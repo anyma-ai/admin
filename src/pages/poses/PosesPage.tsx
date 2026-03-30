@@ -1,9 +1,24 @@
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  type ChangeEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { usePosePrompts } from '@/app/pose-prompts';
-import { PlusIcon } from '@/assets/icons';
+import {
+  createPosePrompt,
+  getPosePromptDetails,
+  getPosePrompts,
+  updatePosePrompt,
+  usePosePrompts,
+} from '@/app/pose-prompts';
+import { notifyError, notifySuccess } from '@/app/toast';
+import { DownloadIcon, PlusIcon, UploadIcon } from '@/assets/icons';
 import {
   Alert,
   Button,
@@ -11,6 +26,7 @@ import {
   Container,
   EmptyState,
   Field,
+  IconButton,
   Input,
   Pagination,
   Select,
@@ -19,10 +35,16 @@ import {
   Table,
   Typography,
 } from '@/atoms';
-import type { IPosePrompt } from '@/common/types';
+import type { CreatePosePromptDto, IPosePrompt, IPosePromptDetails } from '@/common/types';
 import { AppShell } from '@/components/templates';
 
 import s from './PosesPage.module.scss';
+import {
+  buildPosesTransferFileName,
+  buildPosesTransferPayload,
+  downloadPosesTransferFile,
+  parsePosesTransferFile,
+} from './poseTransfer';
 
 type QueryUpdate = {
   search?: string;
@@ -70,6 +92,7 @@ function parsePageSize(value: string | null) {
 }
 
 export function PosesPage() {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const rawSearch = searchParams.get('search') ?? '';
@@ -79,6 +102,9 @@ export function PosesPage() {
   const [searchInput, setSearchInput] = useState(rawSearch);
   const debouncedSearch = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
   const normalizedSearch = debouncedSearch.trim();
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const page = parsePositiveNumber(rawPage, 1);
   const pageSize = parsePageSize(rawPageSize);
@@ -197,6 +223,116 @@ export function PosesPage() {
     navigate(`/poses/${pose.id}`);
   };
 
+  const fetchAllPosePromptSummaries = useCallback(async () => {
+    const all: IPosePrompt[] = [];
+    let skip = 0;
+    const take = 200;
+
+    while (true) {
+      const pageData = await getPosePrompts({
+        skip,
+        take,
+      });
+      all.push(...pageData.data);
+      skip += pageData.data.length;
+      if (skip >= pageData.total || pageData.data.length === 0) {
+        break;
+      }
+    }
+
+    return all;
+  }, []);
+
+  const fetchAllPosePromptDetails = useCallback(async () => {
+    const summaries = await fetchAllPosePromptSummaries();
+    return Promise.all(summaries.map((pose) => getPosePromptDetails(pose.id)));
+  }, [fetchAllPosePromptSummaries]);
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const details = await fetchAllPosePromptDetails();
+      const payload = buildPosesTransferPayload(details);
+      downloadPosesTransferFile(payload, buildPosesTransferFileName());
+      notifySuccess('Poses exported.', 'Poses exported.');
+    } catch (error) {
+      notifyError(error, 'Unable to export poses.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImportButtonClick = () => {
+    if (isImporting || isExporting) return;
+    importInputRef.current?.click();
+  };
+
+  const handleImportFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = '';
+    if (!file) return;
+
+    setIsImporting(true);
+
+    try {
+      const imported = await parsePosesTransferFile(file);
+      const existing = await fetchAllPosePromptDetails();
+      const existingByIdx = new Map<number, IPosePromptDetails>();
+      const duplicateIdx: number[] = [];
+
+      for (const pose of existing) {
+        const alreadyExists = existingByIdx.get(pose.idx);
+        if (alreadyExists) {
+          duplicateIdx.push(pose.idx);
+          continue;
+        }
+        existingByIdx.set(pose.idx, pose);
+      }
+
+      if (duplicateIdx.length > 0) {
+        const uniqueDuplicateIdx = Array.from(new Set(duplicateIdx)).sort(
+          (a, b) => a - b,
+        );
+        throw new Error(
+          `Existing poses contain duplicate idx values: ${uniqueDuplicateIdx.join(', ')}.`,
+        );
+      }
+
+      let created = 0;
+      let updated = 0;
+
+      for (const pose of imported.poses) {
+        const payload: CreatePosePromptDto = {
+          idx: pose.idx,
+          sexType: pose.sexType,
+          pose: pose.pose,
+          angle: pose.angle,
+          prompt: pose.prompt,
+        };
+
+        const existingPose = existingByIdx.get(pose.idx);
+        if (existingPose) {
+          await updatePosePrompt(existingPose.id, payload);
+          updated += 1;
+          continue;
+        }
+
+        await createPosePrompt(payload);
+        created += 1;
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ['pose-prompts'] });
+      notifySuccess(
+        'Poses imported.',
+        `Imported ${imported.poses.length} poses: ${updated} updated, ${created} created.`,
+      );
+    } catch (error) {
+      notifyError(error, 'Unable to import poses.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   return (
     <AppShell>
       <Container size="wide" className={s.page}>
@@ -205,13 +341,39 @@ export function PosesPage() {
             <Typography variant="h2">Poses</Typography>
           </div>
           <ButtonGroup>
-            <Button variant="secondary" onClick={() => navigate('/poses/find-similar')}>
-              Find similar
-            </Button>
-            <Button iconLeft={<PlusIcon />} onClick={() => navigate('/poses/new')}>
+            <IconButton
+              aria-label="Export poses"
+              tooltip="Export poses"
+              icon={<DownloadIcon />}
+              variant="ghost"
+              onClick={handleExport}
+              loading={isExporting}
+              disabled={isImporting}
+            />
+            <IconButton
+              aria-label="Import poses"
+              tooltip="Import poses"
+              icon={<UploadIcon />}
+              variant="ghost"
+              onClick={handleImportButtonClick}
+              loading={isImporting}
+              disabled={isExporting}
+            />
+            <Button
+              iconLeft={<PlusIcon />}
+              onClick={() => navigate('/poses/new')}
+              disabled={isExporting || isImporting}
+            >
               Create pose
             </Button>
           </ButtonGroup>
+          <input
+            ref={importInputRef}
+            className={s.hiddenInput}
+            type="file"
+            accept="application/json,.json"
+            onChange={handleImportFileChange}
+          />
         </div>
 
         <div className={s.filters}>

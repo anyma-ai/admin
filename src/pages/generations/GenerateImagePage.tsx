@@ -9,7 +9,7 @@ import {
   useCreateImgGeneration,
 } from '@/app/img-generations';
 import { useLoras } from '@/app/loras';
-import { usePosePromptDetails, usePosePrompts } from '@/app/pose-prompts';
+import { usePosePrompts } from '@/app/pose-prompts';
 import {
   Alert,
   Badge,
@@ -19,7 +19,6 @@ import {
   Field,
   FormRow,
   Grid,
-  Input,
   Select,
   Skeleton,
   Stack,
@@ -78,11 +77,7 @@ type GenerationFormValues = {
   mainLoraId: string;
   secondLoraId: string;
   userRequest: string;
-  sexRequest: {
-    pose: string;
-    details: string;
-    angle: string;
-  };
+  sexPoseId: string;
 };
 
 type BatchItemState = 'queued' | 'submitting' | 'created' | 'failed';
@@ -151,11 +146,7 @@ function buildInitialValues(
     mainLoraId: prefill?.mainLoraId ?? '',
     secondLoraId: prefill?.secondLoraId ?? '',
     userRequest: prefill?.userRequest ?? '',
-    sexRequest: {
-      pose: prefill?.sexRequest?.pose ?? '',
-      details: prefill?.sexRequest?.details ?? '',
-      angle: prefill?.sexRequest?.angle ?? '',
-    },
+    sexPoseId: prefill?.sexPoseId ?? '',
   };
 }
 
@@ -172,11 +163,7 @@ function buildGenerationRequest(
   };
 
   if (isSexStage(values.stage)) {
-    payload.sexRequest = {
-      pose: values.sexRequest.pose.trim(),
-      details: values.sexRequest.details.trim(),
-      angle: values.sexRequest.angle.trim(),
-    };
+    payload.sexPoseId = values.sexPoseId;
   } else {
     payload.userRequest = values.userRequest.trim();
   }
@@ -251,7 +238,6 @@ export function GenerateImagePage() {
   const [mainLoraSearch, setMainLoraSearch] = useState('');
   const [secondLoraSearch, setSecondLoraSearch] = useState('');
   const [poseSearch, setPoseSearch] = useState('');
-  const [selectedPosePromptId, setSelectedPosePromptId] = useState('');
   const debouncedCharacterSearch = useDebouncedValue(
     characterSearch,
     SEARCH_DEBOUNCE_MS,
@@ -306,10 +292,6 @@ export function GenerateImagePage() {
     skip: 0,
     take: PAGE_SIZE,
   });
-  const {
-    data: posePromptDetails,
-    error: posePromptDetailsError,
-  } = usePosePromptDetails(selectedPosePromptId || null, Boolean(selectedPosePromptId));
   const { data: characterDetails, error: detailsError } = useCharacterDetails(
     values.characterId || null,
   );
@@ -337,18 +319,6 @@ export function GenerateImagePage() {
   );
   const isSexRequestStage = isSexStage(values.stage);
 
-  useEffect(() => {
-    if (!posePromptDetails) return;
-    setValues((prev) => ({
-      ...prev,
-      sexRequest: {
-        pose: posePromptDetails.meta.pose,
-        angle: posePromptDetails.meta.angle,
-        details: posePromptDetails.meta.details,
-      },
-    }));
-  }, [posePromptDetails]);
-
   const errors = useMemo(() => {
     if (!showErrors) return {};
     const result: {
@@ -359,8 +329,7 @@ export function GenerateImagePage() {
       mainLoraId?: string;
       secondLoraId?: string;
       userRequest?: string;
-      sexPose?: string;
-      sexDetails?: string;
+      sexPoseId?: string;
     } = {};
     if (!values.characterId) result.characterId = 'Select a character.';
     if (!values.scenarioId) result.scenarioId = 'Select a scenario.';
@@ -377,7 +346,7 @@ export function GenerateImagePage() {
       result.secondLoraId = 'Secondary LoRA must differ from main LoRA.';
     }
     if (isSexRequestStage) {
-      if (!values.sexRequest.pose.trim()) result.sexPose = 'Enter a pose.';
+      if (!values.sexPoseId) result.sexPoseId = 'Select a pose prompt.';
     } else if (!values.userRequest.trim()) {
       result.userRequest = 'Enter a request.';
     }
@@ -393,9 +362,7 @@ export function GenerateImagePage() {
         values.type &&
         (!values.secondLoraId || values.mainLoraId) &&
         (!values.secondLoraId || values.mainLoraId !== values.secondLoraId) &&
-        (isSexRequestStage
-          ? values.sexRequest.pose.trim()
-          : values.userRequest.trim()),
+        (isSexRequestStage ? values.sexPoseId : values.userRequest.trim()),
       ),
     [isSexRequestStage, values],
   );
@@ -526,7 +493,6 @@ export function GenerateImagePage() {
     mainLoraError ||
     secondLoraError ||
     posePromptError ||
-    posePromptDetailsError ||
     detailsError;
   const errorMessage =
     blockingError instanceof Error
@@ -623,14 +589,21 @@ export function GenerateImagePage() {
       : undefined,
   );
 
-  const posePromptOptions = useMemo(
-    () =>
-      (posePromptData?.data ?? []).map((posePrompt) => ({
-        id: posePrompt.id,
-        label: posePrompt.name,
-        meta: posePrompt.id,
-      })),
-    [posePromptData?.data],
+  const posePromptOptions = mergeSelectedOption(
+    (posePromptData?.data ?? []).map((posePrompt) => ({
+      id: posePrompt.id,
+      label: posePrompt.name,
+      meta: posePrompt.id,
+    })),
+    prefill?.sexPoseId &&
+      values.sexPoseId === prefill.sexPoseId &&
+      prefill.sexPoseName
+      ? {
+          id: prefill.sexPoseId,
+          label: prefill.sexPoseName,
+          meta: prefill.sexPoseId,
+        }
+      : undefined,
   );
 
   const stageOptions = useMemo(
@@ -750,19 +723,7 @@ export function GenerateImagePage() {
   };
 
   const handlePosePromptSelect = (value: string) => {
-    setSelectedPosePromptId(value);
-
-    if (!value) {
-      setValues((prev) => ({
-        ...prev,
-        sexRequest: {
-          ...prev.sexRequest,
-          pose: '',
-          angle: '',
-          details: '',
-        },
-      }));
-    }
+    setValues((prev) => ({ ...prev, sexPoseId: value }));
   };
 
   return (
@@ -976,15 +937,15 @@ export function GenerateImagePage() {
           </FormRow>
 
           {isSexRequestStage ? (
-            <FormRow columns={3}>
+            <FormRow columns={1}>
               <Field
-                label="Pose"
+                label="Pose prompt"
                 labelFor="generation-sex-pose"
-                error={errors.sexPose}
+                error={errors.sexPoseId}
               >
                 <SearchSelect
                   id="generation-sex-pose"
-                  value={selectedPosePromptId}
+                  value={values.sexPoseId}
                   options={posePromptOptions.map((option) => ({
                     id: option.id,
                     label: option.label,
@@ -994,42 +955,16 @@ export function GenerateImagePage() {
                   onSearchChange={setPoseSearch}
                   onSelect={handlePosePromptSelect}
                   placeholder={
-                    isPosePromptsLoading ? 'Loading poses...' : 'Select pose'
+                    isPosePromptsLoading
+                      ? 'Loading pose prompts...'
+                      : 'Select pose prompt'
                   }
                   disabled={isSubmitting}
                   loading={isPosePromptsLoading}
-                  invalid={Boolean(errors.sexPose)}
-                  emptyLabel="No poses found."
-                  loadingLabel="Loading poses..."
+                  invalid={Boolean(errors.sexPoseId)}
+                  emptyLabel="No pose prompts found."
+                  loadingLabel="Loading pose prompts..."
                 />
-              </Field>
-              <Field
-                label="Details"
-                labelFor="generation-sex-details"
-                error={errors.sexDetails}
-              >
-                <Input
-                  id="generation-sex-details"
-                  invalid={Boolean(errors.sexDetails)}
-                  value={values.sexRequest.details}
-                  onChange={(event) =>
-                    setValues((prev) => ({
-                      ...prev,
-                      sexRequest: {
-                        ...prev.sexRequest,
-                        details: event.target.value,
-                      },
-                    }))
-                  }
-                  placeholder="Enter details"
-                  fullWidth
-                  disabled={isSubmitting}
-                />
-              </Field>
-              <Field label="Pose text">
-                <Typography variant="body" tone="muted">
-                  {values.sexRequest.pose || 'Select a pose to autofill the request.'}
-                </Typography>
               </Field>
             </FormRow>
           ) : (

@@ -10,11 +10,13 @@ import {
   Alert,
   Button,
   Container,
+  Field,
   FormRow,
   Skeleton,
   Stack,
   Typography,
 } from '@/atoms';
+import type { UpdatePosePromptDto } from '@/common/types';
 import { ConfirmModal } from '@/components/molecules/confirm-modal/ConfirmModal';
 import { AppShell } from '@/components/templates';
 
@@ -27,22 +29,36 @@ import {
 
 function getInitialValues(): PosePromptFormValues {
   return {
-    name: '',
+    idx: '',
+    sexType: '',
     pose: '',
     angle: '',
-    details: '',
     prompt: '',
   };
+}
+
+function parseIdx(value: string) {
+  const normalized = value.trim();
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  if (!Number.isInteger(parsed) || parsed < 0) return null;
+  return parsed;
 }
 
 function getErrors(values: PosePromptFormValues): PosePromptFormErrors {
   const errors: PosePromptFormErrors = {};
 
-  if (!values.name.trim()) {
-    errors.name = 'Enter a name.';
+  if (parseIdx(values.idx) === null) {
+    errors.idx = 'Enter a non-negative integer.';
   }
-  if (!values.pose.trim()) {
-    errors.pose = 'Enter a pose.';
+  if (!values.sexType) {
+    errors.sexType = 'Select a sex type.';
+  }
+  if (!values.pose) {
+    errors.pose = 'Select a pose.';
+  }
+  if (!values.angle) {
+    errors.angle = 'Select an angle.';
   }
   if (!values.prompt.trim()) {
     errors.prompt = 'Enter prompt text.';
@@ -75,10 +91,10 @@ export function PoseUpdatePage() {
     if (!data) return getInitialValues();
     if (draft?.id === data.id) return draft.values;
     return {
-      name: data.name ?? '',
-      pose: data.meta.pose ?? '',
-      angle: data.meta.angle ?? '',
-      details: data.meta.details ?? '',
+      idx: String(data.idx),
+      sexType: data.sexType,
+      pose: data.pose,
+      angle: data.angle,
       prompt: data.prompt ?? '',
     };
   }, [data, draft]);
@@ -115,12 +131,10 @@ export function PoseUpdatePage() {
     await updateMutation.mutateAsync({
       id: data.id,
       payload: {
-        name: values.name.trim(),
-        meta: {
-          pose: values.pose.trim(),
-          details: values.details.trim(),
-          angle: values.angle.trim(),
-        },
+        idx: parseIdx(values.idx) as UpdatePosePromptDto['idx'],
+        sexType: values.sexType as UpdatePosePromptDto['sexType'],
+        pose: values.pose as UpdatePosePromptDto['pose'],
+        angle: values.angle as UpdatePosePromptDto['angle'],
         prompt: values.prompt.trim(),
       },
     });
@@ -179,6 +193,13 @@ export function PoseUpdatePage() {
 
         {data ? (
           <Stack gap="16px" className={s.form}>
+            <Field
+              label="Generated label"
+              hint="This value comes from the backend and cannot be edited here."
+            >
+              <Typography variant="body">{data.name || '-'}</Typography>
+            </Field>
+
             <PosePromptForm
               values={values}
               errors={errors}

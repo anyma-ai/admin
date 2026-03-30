@@ -6,8 +6,6 @@ import type { CreatePosePromptDto, UpdatePosePromptDto } from '@/common/types';
 import {
   createPosePrompt,
   deletePosePrompt,
-  findSimilarPosePrompt,
-  type FindSimilarPosePromptDto,
   getPosePromptDetails,
   getPosePrompts,
   type PosePromptsListParams,
@@ -86,12 +84,5 @@ export function useDeletePosePrompt() {
     onError: (error) => {
       notifyError(error, 'Unable to delete the pose.');
     },
-  });
-}
-
-export function useFindSimilarPosePrompt() {
-  return useMutation({
-    mutationFn: (payload: FindSimilarPosePromptDto) =>
-      findSimilarPosePrompt(payload),
   });
 }

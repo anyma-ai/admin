@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCreatePosePrompt } from '@/app/pose-prompts';
 import { PlusIcon } from '@/assets/icons';
 import { Button, Container, Stack, Typography } from '@/atoms';
+import type { CreatePosePromptDto } from '@/common/types';
 import { AppShell } from '@/components/templates';
 
 import s from './PoseFormPage.module.scss';
@@ -15,22 +16,36 @@ import {
 
 function getInitialValues(): PosePromptFormValues {
   return {
-    name: '',
+    idx: '',
+    sexType: '',
     pose: '',
     angle: '',
-    details: '',
     prompt: '',
   };
+}
+
+function parseIdx(value: string) {
+  const normalized = value.trim();
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  if (!Number.isInteger(parsed) || parsed < 0) return null;
+  return parsed;
 }
 
 function getErrors(values: PosePromptFormValues): PosePromptFormErrors {
   const errors: PosePromptFormErrors = {};
 
-  if (!values.name.trim()) {
-    errors.name = 'Enter a name.';
+  if (parseIdx(values.idx) === null) {
+    errors.idx = 'Enter a non-negative integer.';
   }
-  if (!values.pose.trim()) {
-    errors.pose = 'Enter a pose.';
+  if (!values.sexType) {
+    errors.sexType = 'Select a sex type.';
+  }
+  if (!values.pose) {
+    errors.pose = 'Select a pose.';
+  }
+  if (!values.angle) {
+    errors.angle = 'Select an angle.';
   }
   if (!values.prompt.trim()) {
     errors.prompt = 'Enter prompt text.';
@@ -69,12 +84,10 @@ export function PoseCreatePage() {
     }
 
     await createMutation.mutateAsync({
-      name: values.name.trim(),
-      meta: {
-        pose: values.pose.trim(),
-        details: values.details.trim(),
-        angle: values.angle.trim(),
-      },
+      idx: parseIdx(values.idx) as CreatePosePromptDto['idx'],
+      sexType: values.sexType as CreatePosePromptDto['sexType'],
+      pose: values.pose as CreatePosePromptDto['pose'],
+      angle: values.angle as CreatePosePromptDto['angle'],
       prompt: values.prompt.trim(),
     });
     navigate('/poses');
