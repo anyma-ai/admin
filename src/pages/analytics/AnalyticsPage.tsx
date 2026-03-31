@@ -13,6 +13,7 @@ import {
   addMonths,
   buildAnalyticsCsvFileName,
   compareMonthIds,
+  type DeeplinkAnalyticsItem,
   downloadCsvFile,
   formatCount,
   formatMetricDelta,
@@ -29,7 +30,6 @@ import {
   isValidMonthId,
   isValidSection,
   normalizeRange,
-  type DeeplinkAnalyticsItem,
   type PaymentsConversionGroupBy,
   type PaymentsRevenueGroupBy,
   useAnalyticsDaily,
@@ -227,8 +227,14 @@ function formatDeeplinkPercent(value: number | null | undefined) {
   return `${formatCount(value, 1)}%`;
 }
 
-function getDeeplinkActivationRate(item: Pick<DeeplinkAnalyticsItem, 'total' | 'visits'>) {
-  if (!Number.isFinite(item.total) || !Number.isFinite(item.visits) || item.visits <= 0) {
+function getDeeplinkActivationRate(
+  item: Pick<DeeplinkAnalyticsItem, 'total' | 'visits'>,
+) {
+  if (
+    !Number.isFinite(item.total) ||
+    !Number.isFinite(item.visits) ||
+    item.visits <= 0
+  ) {
     return null;
   }
   return (item.total / item.visits) * 100;
@@ -1441,19 +1447,6 @@ export function AnalyticsPage() {
         ),
       },
       {
-        key: 'character',
-        label: (
-          <Typography
-            variant="meta"
-            tone="muted"
-            as="div"
-            style={{ minWidth: 90, fontSize: 12 }}
-          >
-            Character
-          </Typography>
-        ),
-      },
-      {
         key: 'scenario',
         label: (
           <Typography
@@ -1532,7 +1525,7 @@ export function AnalyticsPage() {
             style={{ fontSize: 12 }}
             className={s.alignRight}
           >
-            Customers
+            Cust
           </Typography>
         ),
       },
@@ -1602,7 +1595,7 @@ export function AnalyticsPage() {
             style={{ fontSize: 12 }}
             className={s.alignRight}
           >
-            Conversion
+            CVR
           </Typography>
         ),
       },
@@ -1618,11 +1611,6 @@ export function AnalyticsPage() {
             {item.ref || '—'}
           </Typography>
         </Tooltip>
-      ),
-      character: (
-        <Typography variant="body" as="span">
-          {item.character?.name || '—'}
-        </Typography>
       ),
       scenario: item.scenario ? (
         <div className={s.scenarioCell}>
@@ -1761,11 +1749,18 @@ export function AnalyticsPage() {
     if (!entries.length) return null;
     const totals = entries.reduce(
       (acc, item) => {
+        const visits = Number.isFinite(item.visits) ? item.visits : 0;
         acc.visits += Number.isFinite(item.visits) ? item.visits : 0;
         acc.total += Number.isFinite(item.total) ? item.total : 0;
         acc.unique += Number.isFinite(item.unique) ? item.unique : 0;
         acc.customers += Number.isFinite(item.customers) ? item.customers : 0;
         acc.revenue += Number.isFinite(item.revenue) ? item.revenue : 0;
+        if (visits > 0) {
+          acc.activationRateVisits += visits;
+          acc.activationRateTotal += Number.isFinite(item.total)
+            ? item.total
+            : 0;
+        }
         return acc;
       },
       {
@@ -1774,18 +1769,28 @@ export function AnalyticsPage() {
         unique: 0,
         customers: 0,
         revenue: 0,
+        activationRateVisits: 0,
+        activationRateTotal: 0,
       },
     );
 
     const activationRate =
-      totals.visits > 0 ? (totals.total / totals.visits) * 100 : null;
+      totals.activationRateVisits > 0
+        ? (totals.activationRateTotal / totals.activationRateVisits) * 100
+        : null;
     const conversion =
       totals.total > 0 ? totals.customers / totals.total : null;
     const arpu = totals.total > 0 ? totals.revenue / totals.total : null;
     const arpc =
       totals.customers > 0 ? totals.revenue / totals.customers : null;
 
-    return { ...totals, activationRate, conversion, arpu, arpc };
+    const {
+      activationRateVisits: _activationRateVisits,
+      activationRateTotal: _activationRateTotal,
+      ...displayTotals
+    } = totals;
+
+    return { ...displayTotals, activationRate, conversion, arpu, arpc };
   }, [dailyData]);
 
   const dailyColumns = useMemo(
@@ -2761,8 +2766,8 @@ export function AnalyticsPage() {
 
               <Section title="Totals">
                 {isDeeplinksLoading ? (
-                  <Grid columns={9} gap={16}>
-                    {Array.from({ length: 9 }).map((_, index) => (
+                  <Grid columns={6} gap={16}>
+                    {Array.from({ length: 10 }).map((_, index) => (
                       <Skeleton key={index} height={88} />
                     ))}
                   </Grid>
@@ -2796,6 +2801,18 @@ export function AnalyticsPage() {
                         <Typography variant="h3">
                           {deeplinkTotals
                             ? formatCount(deeplinkTotals.total)
+                            : '—'}
+                        </Typography>
+                      </Card>
+                      <Card className={s.kpiCard} padding="md">
+                        <Typography variant="meta" tone="muted">
+                          Activation Rate
+                        </Typography>
+                        <Typography variant="h3">
+                          {deeplinkTotals
+                            ? formatDeeplinkPercent(
+                                deeplinkTotals.activationRate,
+                              )
                             : '—'}
                         </Typography>
                       </Card>
