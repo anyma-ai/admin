@@ -29,6 +29,7 @@ import {
   isValidMonthId,
   isValidSection,
   normalizeRange,
+  type DeeplinkAnalyticsItem,
   type PaymentsConversionGroupBy,
   type PaymentsRevenueGroupBy,
   useAnalyticsDaily,
@@ -95,13 +96,17 @@ type ChartDatum = {
 };
 
 type DailyMetricKey =
+  | 'visits'
   | 'total'
+  | 'activationRate'
   | 'unique'
   | 'customers'
   | 'revenue'
   | 'conversion'
   | 'arpu'
   | 'arpc';
+
+type CountryMetricKey = Exclude<DailyMetricKey, 'visits' | 'activationRate'>;
 
 type CountryOrder = 'asc' | 'desc';
 
@@ -112,6 +117,7 @@ type DailyChartDatum = {
 
 type DeeplinkSortKey =
   | 'total'
+  | 'activationRate'
   | 'revenue'
   | 'arpu'
   | 'arpc'
@@ -120,6 +126,10 @@ type DeeplinkSortKey =
   | 'unique'
   | 'customers'
   | 'conversion';
+
+type DeeplinkViewItem = DeeplinkAnalyticsItem & {
+  activationRate: number | null;
+};
 
 const MAX_RANGE_MONTHS = 24;
 const DEFAULT_DEEPLINK_RANGE_DAYS = 30;
@@ -210,11 +220,18 @@ function normalizeDateRange(
   return { start, end, adjusted };
 }
 
-function formatDeeplinkConversion(value: number | null | undefined) {
+function formatDeeplinkPercent(value: number | null | undefined) {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return '—';
   }
   return `${formatCount(value, 1)}%`;
+}
+
+function getDeeplinkActivationRate(item: Pick<DeeplinkAnalyticsItem, 'total' | 'visits'>) {
+  if (!Number.isFinite(item.total) || !Number.isFinite(item.visits) || item.visits <= 0) {
+    return null;
+  }
+  return (item.total / item.visits) * 100;
 }
 
 function formatDayLabel(value: string, variant: 'short' | 'long' = 'short') {
@@ -238,6 +255,7 @@ function isValidDeeplinkSort(
 ): value is DeeplinkSortKey {
   return (
     value === 'total' ||
+    value === 'activationRate' ||
     value === 'revenue' ||
     value === 'arpu' ||
     value === 'arpc' ||
@@ -252,6 +270,22 @@ function isValidDeeplinkSort(
 function isValidDailyMetric(
   value: string | null | undefined,
 ): value is DailyMetricKey {
+  return (
+    value === 'visits' ||
+    value === 'total' ||
+    value === 'activationRate' ||
+    value === 'unique' ||
+    value === 'customers' ||
+    value === 'revenue' ||
+    value === 'conversion' ||
+    value === 'arpu' ||
+    value === 'arpc'
+  );
+}
+
+function isValidCountryMetric(
+  value: string | null | undefined,
+): value is CountryMetricKey {
   return (
     value === 'total' ||
     value === 'unique' ||
@@ -280,6 +314,58 @@ function getCountryLimit(value: string | null | undefined) {
 
 const DAILY_METRIC_OPTIONS: Array<{
   value: DailyMetricKey;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'visits',
+    label: 'Visits',
+    description: 'Visits recorded for the day.',
+  },
+  {
+    value: 'total',
+    label: 'Total',
+    description: 'Distinct users with at least one chat session in the day.',
+  },
+  {
+    value: 'activationRate',
+    label: 'Activation Rate',
+    description: 'Total divided by visits.',
+  },
+  {
+    value: 'unique',
+    label: 'Unique',
+    description: 'Users whose first user message happened in the day.',
+  },
+  {
+    value: 'customers',
+    label: 'Customers',
+    description: 'Distinct users with at least one payment in the day.',
+  },
+  {
+    value: 'revenue',
+    label: 'Revenue',
+    description: 'Sum of payment amount for the day, in USD.',
+  },
+  {
+    value: 'conversion',
+    label: 'Conversion',
+    description: 'Customers divided by total users.',
+  },
+  {
+    value: 'arpu',
+    label: 'ARPU',
+    description: 'Revenue divided by total users.',
+  },
+  {
+    value: 'arpc',
+    label: 'ARPC',
+    description: 'Revenue divided by customers.',
+  },
+];
+
+const COUNTRY_METRIC_OPTIONS: Array<{
+  value: CountryMetricKey;
   label: string;
   description: string;
 }> = [
@@ -414,7 +500,7 @@ export function AnalyticsPage() {
   const dailyMetricKey = isValidDailyMetric(rawDailyMetric)
     ? rawDailyMetric
     : 'total';
-  const countryMetricKey = isValidDailyMetric(rawCountryMetric)
+  const countryMetricKey = isValidCountryMetric(rawCountryMetric)
     ? rawCountryMetric
     : 'total';
   const countryOrder = isValidCountryOrder(rawCountryOrder)
@@ -968,6 +1054,14 @@ export function AnalyticsPage() {
       })),
     [],
   );
+  const countryMetricOptions = useMemo(
+    () =>
+      COUNTRY_METRIC_OPTIONS.map((metric) => ({
+        value: metric.value,
+        label: metric.label,
+      })),
+    [],
+  );
   const dailyMetricMeta = useMemo(
     () =>
       DAILY_METRIC_OPTIONS.find((metric) => metric.value === dailyMetricKey) ??
@@ -1203,6 +1297,7 @@ export function AnalyticsPage() {
   const deeplinkSortOptions = useMemo(
     () => [
       { value: 'total', label: 'Total' },
+      { value: 'activationRate', label: 'Activation Rate' },
       { value: 'revenue', label: 'Revenue' },
       { value: 'arpu', label: 'ARPU' },
       { value: 'arpc', label: 'ARPC' },
@@ -1277,18 +1372,26 @@ export function AnalyticsPage() {
     return [{ value: '', label: baseLabel }, ...options];
   }, [deeplinkScenarioData, deeplinkScenarioId]);
 
-  const sortedDeeplinkRows = useMemo(() => {
+  const deeplinkViewData = useMemo<DeeplinkViewItem[]>(() => {
     const entries = deeplinkData ?? [];
+    return entries.map((item) => ({
+      ...item,
+      activationRate: getDeeplinkActivationRate(item),
+    }));
+  }, [deeplinkData]);
+
+  const sortedDeeplinkRows = useMemo(() => {
+    const entries = deeplinkViewData;
     const valueForSort = (item: (typeof entries)[number]) => {
       const value = item?.[deeplinkSort];
       if (!Number.isFinite(value)) return Number.NEGATIVE_INFINITY;
       return value as number;
     };
     return [...entries].sort((a, b) => valueForSort(b) - valueForSort(a));
-  }, [deeplinkData, deeplinkSort]);
+  }, [deeplinkViewData, deeplinkSort]);
 
   const deeplinkTotals = useMemo(() => {
-    const entries = deeplinkData ?? [];
+    const entries = deeplinkViewData;
     if (!entries.length) return null;
     const totals = entries.reduce(
       (acc, item) => {
@@ -1317,9 +1420,10 @@ export function AnalyticsPage() {
     const arpu = totals.total > 0 ? totals.revenue / totals.total : null;
     const arpc =
       totals.customers > 0 ? totals.revenue / totals.customers : null;
+    const activationRate = getDeeplinkActivationRate(totals);
 
-    return { ...totals, conversion, arpu, arpc };
-  }, [deeplinkData]);
+    return { ...totals, conversion, arpu, arpc, activationRate };
+  }, [deeplinkViewData]);
 
   const deeplinkColumns = useMemo(
     () => [
@@ -1401,6 +1505,20 @@ export function AnalyticsPage() {
             className={s.alignRight}
           >
             Total
+          </Typography>
+        ),
+      },
+      {
+        key: 'activationRate',
+        label: (
+          <Typography
+            variant="meta"
+            tone="muted"
+            as="div"
+            style={{ fontSize: 12 }}
+            className={s.alignRight}
+          >
+            AR
           </Typography>
         ),
       },
@@ -1552,6 +1670,16 @@ export function AnalyticsPage() {
           {Number.isFinite(item.total) ? formatCount(item.total) : '—'}
         </Typography>
       ),
+      activationRate: (
+        <Typography
+          variant="body"
+          as="span"
+          className={s.alignRight}
+          style={{ fontSize: 14 }}
+        >
+          {formatDeeplinkPercent(item.activationRate)}
+        </Typography>
+      ),
       customers: (
         <Typography
           variant="body"
@@ -1617,7 +1745,7 @@ export function AnalyticsPage() {
           className={s.alignRight}
           style={{ fontSize: 14 }}
         >
-          {formatDeeplinkConversion(item.conversion)}
+          {formatDeeplinkPercent(item.conversion)}
         </Typography>
       ),
     }));
@@ -1633,6 +1761,7 @@ export function AnalyticsPage() {
     if (!entries.length) return null;
     const totals = entries.reduce(
       (acc, item) => {
+        acc.visits += Number.isFinite(item.visits) ? item.visits : 0;
         acc.total += Number.isFinite(item.total) ? item.total : 0;
         acc.unique += Number.isFinite(item.unique) ? item.unique : 0;
         acc.customers += Number.isFinite(item.customers) ? item.customers : 0;
@@ -1640,6 +1769,7 @@ export function AnalyticsPage() {
         return acc;
       },
       {
+        visits: 0,
         total: 0,
         unique: 0,
         customers: 0,
@@ -1647,13 +1777,15 @@ export function AnalyticsPage() {
       },
     );
 
+    const activationRate =
+      totals.visits > 0 ? (totals.total / totals.visits) * 100 : null;
     const conversion =
       totals.total > 0 ? totals.customers / totals.total : null;
     const arpu = totals.total > 0 ? totals.revenue / totals.total : null;
     const arpc =
       totals.customers > 0 ? totals.revenue / totals.customers : null;
 
-    return { ...totals, conversion, arpu, arpc };
+    return { ...totals, activationRate, conversion, arpu, arpc };
   }, [dailyData]);
 
   const dailyColumns = useMemo(
@@ -1672,6 +1804,21 @@ export function AnalyticsPage() {
         ),
       },
       {
+        key: 'visits',
+        label: (
+          <Tooltip content="Visits recorded for the day.">
+            <Typography
+              variant="meta"
+              as="span"
+              tone="muted"
+              className={cn(s.tableHeader, [s.alignRight])}
+            >
+              Visits
+            </Typography>
+          </Tooltip>
+        ),
+      },
+      {
         key: 'total',
         label: (
           <Tooltip content="Distinct users with at least one chat session in the day.">
@@ -1682,6 +1829,21 @@ export function AnalyticsPage() {
               className={cn(s.tableHeader, [s.alignRight])}
             >
               Total
+            </Typography>
+          </Tooltip>
+        ),
+      },
+      {
+        key: 'activationRate',
+        label: (
+          <Tooltip content="Total divided by visits.">
+            <Typography
+              variant="meta"
+              as="span"
+              tone="muted"
+              className={cn(s.tableHeader, [s.alignRight])}
+            >
+              AR
             </Typography>
           </Tooltip>
         ),
@@ -1790,6 +1952,16 @@ export function AnalyticsPage() {
             {item.day ? formatDayLabel(item.day, 'long') : '—'}
           </Typography>
         ),
+        visits: (
+          <Typography
+            variant="body"
+            as="span"
+            className={s.alignRight}
+            style={{ fontSize: 14 }}
+          >
+            {Number.isFinite(item.visits) ? formatCount(item.visits) : '—'}
+          </Typography>
+        ),
         total: (
           <Typography
             variant="body"
@@ -1798,6 +1970,16 @@ export function AnalyticsPage() {
             style={{ fontSize: 14 }}
           >
             {Number.isFinite(item.total) ? formatCount(item.total) : '—'}
+          </Typography>
+        ),
+        activationRate: (
+          <Typography
+            variant="body"
+            as="span"
+            className={s.alignRight}
+            style={{ fontSize: 14 }}
+          >
+            {formatDeeplinkPercent(item.activationRate)}
           </Typography>
         ),
         unique: (
@@ -2233,6 +2415,8 @@ export function AnalyticsPage() {
     (value: number, variant: 'chart' | 'tooltip') => {
       if (!Number.isFinite(value)) return '—';
       switch (dailyMetricKey) {
+        case 'activationRate':
+          return formatDeeplinkPercent(value);
         case 'revenue':
           return dailyRevenueMetric
             ? formatMetricValue(dailyRevenueMetric, value, variant)
@@ -2306,7 +2490,9 @@ export function AnalyticsPage() {
       .sort((a, b) => String(b.day).localeCompare(String(a.day)))
       .map((item) => [
         item.day,
+        Number.isFinite(item.visits) ? item.visits : null,
         Number.isFinite(item.total) ? item.total : null,
+        Number.isFinite(item.activationRate) ? item.activationRate : null,
         Number.isFinite(item.unique) ? item.unique : null,
         Number.isFinite(item.customers) ? item.customers : null,
         Number.isFinite(item.revenue) ? item.revenue : null,
@@ -2326,6 +2512,7 @@ export function AnalyticsPage() {
       Number.isFinite(item.visits) ? item.visits : null,
       Number.isFinite(item.unique) ? item.unique : null,
       Number.isFinite(item.total) ? item.total : null,
+      Number.isFinite(item.activationRate) ? item.activationRate : null,
       Number.isFinite(item.customers) ? item.customers : null,
       Number.isFinite(item.transactions) ? item.transactions : null,
       Number.isFinite(item.revenue) ? item.revenue : null,
@@ -2359,6 +2546,7 @@ export function AnalyticsPage() {
               'Visits',
               'Unique',
               'Total',
+              'Activation Rate',
               'Customers',
               'Transactions',
               'Revenue (USD)',
@@ -2379,7 +2567,9 @@ export function AnalyticsPage() {
           {
             headers: [
               'Day',
+              'Visits',
               'Total',
+              'Activation Rate',
               'Unique',
               'Customers',
               'Revenue (USD)',
@@ -2677,9 +2867,7 @@ export function AnalyticsPage() {
                         </Typography>
                         <Typography variant="h3">
                           {deeplinkTotals
-                            ? formatDeeplinkConversion(
-                                deeplinkTotals.conversion,
-                              )
+                            ? formatDeeplinkPercent(deeplinkTotals.conversion)
                             : '—'}
                         </Typography>
                       </Card>
@@ -2758,20 +2946,38 @@ export function AnalyticsPage() {
 
               <Section title="Totals">
                 {isDailyLoading ? (
-                  <Grid columns={7} gap={16}>
-                    {Array.from({ length: 7 }).map((_, index) => (
+                  <Grid columns={6} gap={16}>
+                    {Array.from({ length: 9 }).map((_, index) => (
                       <Skeleton key={index} height={88} />
                     ))}
                   </Grid>
                 ) : (
                   <>
-                    <Grid columns={7} gap={16}>
+                    <Grid columns={6} gap={16}>
+                      <Card className={s.kpiCard} padding="md">
+                        <Typography variant="meta" tone="muted">
+                          Visits
+                        </Typography>
+                        <Typography variant="h3">
+                          {dailyTotals ? formatCount(dailyTotals.visits) : '—'}
+                        </Typography>
+                      </Card>
                       <Card className={s.kpiCard} padding="md">
                         <Typography variant="meta" tone="muted">
                           Total
                         </Typography>
                         <Typography variant="h3">
                           {dailyTotals ? formatCount(dailyTotals.total) : '—'}
+                        </Typography>
+                      </Card>
+                      <Card className={s.kpiCard} padding="md">
+                        <Typography variant="meta" tone="muted">
+                          Activation Rate
+                        </Typography>
+                        <Typography variant="h3">
+                          {dailyTotals
+                            ? formatDeeplinkPercent(dailyTotals.activationRate)
+                            : '—'}
                         </Typography>
                       </Card>
                       <Card className={s.kpiCard} padding="md">
@@ -3010,7 +3216,7 @@ export function AnalyticsPage() {
                   </Field>
                   <Field label="Top by" className={s.filterField}>
                     <Select
-                      options={dailyMetricOptions}
+                      options={countryMetricOptions}
                       value={countryMetricKey}
                       onChange={(value) =>
                         updateSearchParams({ countryMetric: value })
