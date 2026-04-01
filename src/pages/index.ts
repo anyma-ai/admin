@@ -8,7 +8,6 @@ export { ResetPasswordPage } from './auth/ResetPasswordPage';
 export { BatchImageDetailsPage } from './batch-images/BatchImageDetailsPage';
 export { BatchImagesPage } from './batch-images/BatchImagesPage';
 export { BroadcastPage } from './broadcast/BroadcastPage';
-export { CharacterImageDetailsPage } from './character-images/CharacterImageDetailsPage';
 export { CharacterImagesPage } from './character-images/CharacterImagesPage';
 export { CharacterDetailsPage } from './characters/CharacterDetailsPage';
 export { CharactersPage } from './characters/CharactersPage';

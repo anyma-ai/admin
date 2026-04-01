@@ -12,3 +12,8 @@ export {
   sexPoseOptions,
   sexTypeOptions,
 } from './posePrompt';
+export {
+  formatUserRequestForDisplay,
+  getVisibleUserRequestFieldKeys,
+  USER_REQUEST_FIELD_CONFIG,
+} from './userRequest';

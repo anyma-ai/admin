@@ -1,4 +1,10 @@
-import { Route, Routes } from 'react-router-dom';
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useParams,
+} from 'react-router-dom';
 
 import { AuthGuard } from '@/app/auth';
 import {
@@ -10,7 +16,6 @@ import {
   BatchImagesPage,
   BroadcastPage,
   CharacterDetailsPage,
-  CharacterImageDetailsPage,
   CharacterImagesPage,
   CharactersPage,
   ChatDetailsPage,
@@ -44,6 +49,19 @@ import {
   VideosPage,
 } from '@/pages';
 
+function CharacterImageDrawerRedirect() {
+  const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+
+  if (id) {
+    searchParams.set('imageId', id);
+  }
+
+  const search = searchParams.toString();
+  return <Navigate to={`/character-images${search ? `?${search}` : ''}`} replace />;
+}
+
 export function AppRoutes() {
   return (
     <Routes>
@@ -60,7 +78,7 @@ export function AppRoutes() {
         <Route path="/character-images" element={<CharacterImagesPage />} />
         <Route
           path="/character-images/:id"
-          element={<CharacterImageDetailsPage />}
+          element={<CharacterImageDrawerRedirect />}
         />
         <Route path="/admins" element={<AdminsPage />} />
         <Route path="/broadcast" element={<BroadcastPage />} />

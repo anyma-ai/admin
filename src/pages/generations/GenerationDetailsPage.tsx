@@ -20,12 +20,12 @@ import {
   Typography,
 } from '@/atoms';
 import { ImgGenerationStatus, RoleplayStage } from '@/common/types';
+import { formatUserRequestForDisplay } from '@/common/utils';
 import { ConfirmModal } from '@/components/molecules/confirm-modal/ConfirmModal';
 import { AppShell } from '@/components/templates';
 
 import s from './GenerationDetailsPage.module.scss';
 import type { GenerateImagePrefillState } from './generationReuse';
-import { formatUserRequestForDisplay } from './userRequest';
 
 const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',

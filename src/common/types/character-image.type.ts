@@ -2,8 +2,10 @@ import {
   type ICharacter,
   type IScenario,
   RoleplayStage,
-} from '@/common/types/character.type.ts';
-import type { IFile } from '@/common/types/file.type.ts';
+} from './character.type.ts';
+import type { IFile } from './file.type.ts';
+import type { UserRequest } from './img-generation.type.ts';
+import { SexPose, type SexType } from './pose-prompt.type.ts';
 
 export type CreateCharacterImageDto = {
   characterId: string;
@@ -26,9 +28,13 @@ export interface ICharacterImage {
   scenario: IScenario;
   createdAt: string;
   updatedAt: string;
+  file: IFile;
 }
 
 export interface ICharacterImageDetails extends ICharacterImage {
   file: IFile;
-  blurredFile: IFile;
+  blurredFile?: IFile | null;
+  userRequest?: UserRequest;
+  sexPose?: SexPose;
+  sexType?: SexType;
 }

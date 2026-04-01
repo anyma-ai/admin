@@ -32,6 +32,10 @@ import {
   RoleplayStage,
   STAGES_IN_ORDER,
 } from '@/common/types';
+import {
+  getVisibleUserRequestFieldKeys,
+  USER_REQUEST_FIELD_CONFIG,
+} from '@/common/utils';
 import { AppShell } from '@/components/templates';
 
 import { SearchSelect } from './components/SearchSelect';
@@ -41,9 +45,7 @@ import {
   buildUserRequestDraft,
   buildUserRequestPayload,
   type GenerationUserRequestDraft,
-  getVisibleUserRequestFieldKeys,
   hasUserRequestContent,
-  USER_REQUEST_FIELD_CONFIG,
   type UserRequestFieldKey,
 } from './userRequest';
 

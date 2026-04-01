@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
 import { isApiRequestError } from '@/app/api/apiErrors';
 import {
@@ -19,7 +19,10 @@ import {
   useCharacterImages,
 } from '@/app/character-images';
 import { useCharacterDetails, useCharacters } from '@/app/characters';
-import { getCharacterDetails, getCharacters } from '@/app/characters/charactersApi';
+import {
+  getCharacterDetails,
+  getCharacters,
+} from '@/app/characters/charactersApi';
 import { copyFile, markFileUploaded, signUpload } from '@/app/files/filesApi';
 import { notifyError, notifySuccess } from '@/app/toast';
 import { DownloadIcon, PlusIcon, UploadIcon } from '@/assets/icons';
@@ -28,6 +31,7 @@ import {
   Badge,
   Button,
   ButtonGroup,
+  Card,
   Container,
   EmptyState,
   Field,
@@ -39,7 +43,6 @@ import {
   Skeleton,
   Stack,
   Switch,
-  Table,
   Textarea,
   Typography,
 } from '@/atoms';
@@ -55,6 +58,7 @@ import { Drawer } from '@/components/molecules';
 import { AppShell } from '@/components/templates';
 import { SearchSelect } from '@/pages/generations/components/SearchSelect';
 
+import { CharacterImageDetailsDrawer } from './CharacterImageDetailsDrawer';
 import s from './CharacterImagesPage.module.scss';
 import {
   buildCharacterImagesTransferFileName,
@@ -74,6 +78,7 @@ type QueryUpdate = {
   characterId?: string;
   scenarioId?: string;
   stage?: string;
+  imageId?: string;
 };
 
 type CreateImageUploadItem = {
@@ -268,7 +273,6 @@ async function uploadToPresigned(
 
 export function CharacterImagesPage() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const rawSearch = searchParams.get('search') ?? '';
   const rawOrder = searchParams.get('order');
@@ -279,6 +283,7 @@ export function CharacterImagesPage() {
   const rawCharacterId = searchParams.get('characterId') ?? '';
   const rawScenarioId = searchParams.get('scenarioId') ?? '';
   const rawStage = searchParams.get('stage');
+  const rawImageId = searchParams.get('imageId') ?? '';
   const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const [searchInput, setSearchInput] = useState(rawSearch);
@@ -301,6 +306,7 @@ export function CharacterImagesPage() {
   const characterFilter = rawCharacterId;
   const scenarioFilter = rawScenarioId;
   const stageFilter = resolveStageFilter(rawStage);
+  const selectedImageId = rawImageId.trim() || null;
 
   const updateSearchParams = useCallback(
     (update: QueryUpdate, replace = false) => {
@@ -382,6 +388,14 @@ export function CharacterImagesPage() {
         }
       }
 
+      if (update.imageId !== undefined) {
+        if (update.imageId) {
+          next.set('imageId', update.imageId);
+        } else {
+          next.delete('imageId');
+        }
+      }
+
       setSearchParams(next, { replace });
     },
     [searchParams, setSearchParams],
@@ -401,10 +415,8 @@ export function CharacterImagesPage() {
     updateSearchParams({ isPregenerated: DEFAULT_PREG_FILTER }, true);
   }, [rawIsPregenerated, updateSearchParams]);
 
-  const {
-    data: filterCharacterDetails,
-    isLoading: isFilterCharacterLoading,
-  } = useCharacterDetails(characterFilter || null);
+  const { data: filterCharacterDetails, isLoading: isFilterCharacterLoading } =
+    useCharacterDetails(characterFilter || null);
 
   useEffect(() => {
     if (!scenarioFilter) return;
@@ -431,7 +443,8 @@ export function CharacterImagesPage() {
       pregFilter === 'all' ? undefined : pregFilter === 'true';
     const isPromotional =
       promoFilter === 'all' ? undefined : promoFilter === 'true';
-    const stage = stageFilter === DEFAULT_STAGE_FILTER ? undefined : stageFilter;
+    const stage =
+      stageFilter === DEFAULT_STAGE_FILTER ? undefined : stageFilter;
     return {
       search: normalizedSearch || undefined,
       order,
@@ -547,97 +560,43 @@ export function CharacterImagesPage() {
     [],
   );
 
-  const columns = useMemo(
-    () => [
-      { key: 'image', label: 'Image' },
-      { key: 'character', label: 'Character' },
-      { key: 'flags', label: 'Flags' },
-      { key: 'updated', label: <span className={s.alignRight}>Updated</span> },
-    ],
-    [],
-  );
-
-  const rows = useMemo(
+  const skeletonCards = useMemo(
     () =>
-      images.map((image) => ({
-        image: (
-          <div className={s.imageCell}>
-            <Typography variant="body">
-              {image.description || 'Untitled image'}
-            </Typography>
-            <Typography variant="caption" tone="muted">
-              {image.scenario?.name || '-'} · {formatStage(image.stage)}
-            </Typography>
+      Array.from({ length: 6 }, (_, index) => (
+        <Card
+          key={`image-skeleton-${index}`}
+          padding="md"
+          className={s.imageCard}
+        >
+          <div className={s.cardHeader}>
+            <div className={s.cardTitleBlock}>
+              <Skeleton width={140} height={12} />
+              <Skeleton width={180} height={10} />
+            </div>
           </div>
-        ),
-        character: (
-          <div className={s.characterCell}>
-            <Typography variant="body">{image.character?.name}</Typography>
-            <Typography variant="caption" tone="muted">
-              {image.character?.id}
-            </Typography>
+          <div className={s.previewFrame}>
+            <Skeleton width="100%" height="100%" />
           </div>
-        ),
-        flags: (
-          <div className={s.badges}>
-            <Badge
-              tone={image.isPregenerated ? 'accent' : 'warning'}
-              outline={!image.isPregenerated}
-            >
-              {image.isPregenerated ? 'Pregenerated' : 'Generated'}
-            </Badge>
-            <Badge
-              tone={image.isPromotional ? 'warning' : 'accent'}
-              outline={!image.isPromotional}
-            >
-              {image.isPromotional ? 'Promotional' : 'Regular'}
-            </Badge>
+          <div className={s.cardMeta}>
+            <Skeleton width={200} height={12} />
+            <div className={s.badges}>
+              <Skeleton width={96} height={20} />
+              <Skeleton width={88} height={20} />
+            </div>
+            <div className={s.cardFooter}>
+              <Skeleton width={110} height={10} />
+              <Skeleton width={120} height={10} />
+            </div>
           </div>
-        ),
-        updated: (
-          <Typography variant="caption" tone="muted" className={s.alignRight}>
-            {formatDate(image.updatedAt)}
-          </Typography>
-        ),
-      })),
-    [images],
-  );
-
-  const skeletonRows = useMemo(
-    () =>
-      Array.from({ length: 6 }, (_, index) => ({
-        image: (
-          <div className={s.imageCell} key={`image-skel-${index}`}>
-            <Skeleton width={180} height={12} />
-            <Skeleton width={120} height={10} />
-          </div>
-        ),
-        character: (
-          <div className={s.characterCell}>
-            <Skeleton width={140} height={12} />
-            <Skeleton width={110} height={10} />
-          </div>
-        ),
-        flags: (
-          <div className={s.badges}>
-            <Skeleton width={70} height={20} />
-            <Skeleton width={90} height={20} />
-            <Skeleton width={110} height={20} />
-          </div>
-        ),
-        updated: (
-          <div className={s.alignRight}>
-            <Skeleton width={120} height={12} />
-          </div>
-        ),
-      })),
+        </Card>
+      )),
     [],
   );
 
   const showSkeleton = isLoading && !data;
   const showEmpty = !showSkeleton && !error && images.length === 0;
-  const showTable = !showEmpty && !error;
-  const showFooter = showTable && !showSkeleton;
+  const showGallery = !showEmpty && !error;
+  const showFooter = showGallery && !showSkeleton;
 
   const rangeStart = total === 0 ? 0 : effectiveSkip + 1;
   const rangeEnd =
@@ -691,6 +650,7 @@ export function CharacterImagesPage() {
   );
 
   const openCreateDrawer = () => {
+    updateSearchParams({ imageId: '' }, true);
     setCreateValues({
       characterId: '',
       scenarioId: '',
@@ -787,7 +747,9 @@ export function CharacterImagesPage() {
     }
   };
 
-  const handleCreateFilesChange = async (event: ChangeEvent<HTMLInputElement>) => {
+  const handleCreateFilesChange = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
     const files = Array.from(event.target.files ?? []);
     setCreateFilesInputKey((prev) => prev + 1);
 
@@ -954,7 +916,8 @@ export function CharacterImagesPage() {
   };
 
   const fetchAllImageSummaries = useCallback(async () => {
-    const allImages: Awaited<ReturnType<typeof getCharacterImages>>['data'] = [];
+    const allImages: Awaited<ReturnType<typeof getCharacterImages>>['data'] =
+      [];
     let skip = 0;
     const take = 200;
 
@@ -1020,7 +983,9 @@ export function CharacterImagesPage() {
     importInputRef.current?.click();
   };
 
-  const handleImportFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+  const handleImportFileChange = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0] ?? null;
     event.target.value = '';
     if (!file) return;
@@ -1081,26 +1046,31 @@ export function CharacterImagesPage() {
           throw new Error(`Character "${characterName}" was not resolved.`);
         }
         const currentSet =
-          requiredScenarioNamesByCharacterId.get(characterId) ?? new Set<string>();
+          requiredScenarioNamesByCharacterId.get(characterId) ??
+          new Set<string>();
         currentSet.add(scenarioName);
         requiredScenarioNamesByCharacterId.set(characterId, currentSet);
       }
 
       const characterDetailsEntries = await Promise.all(
-        Array.from(requiredScenarioNamesByCharacterId.keys()).map(async (id) => [
-          id,
-          await getCharacterDetails(id),
-        ] as const),
+        Array.from(requiredScenarioNamesByCharacterId.keys()).map(
+          async (id) => [id, await getCharacterDetails(id)] as const,
+        ),
       );
       const characterDetailsById = new Map<string, ICharacterDetails>(
         characterDetailsEntries,
       );
 
       const resolvedScenarioIds = new Map<string, string>();
-      for (const [characterId, requiredScenarioNames] of requiredScenarioNamesByCharacterId.entries()) {
+      for (const [
+        characterId,
+        requiredScenarioNames,
+      ] of requiredScenarioNamesByCharacterId.entries()) {
         const details = characterDetailsById.get(characterId);
         if (!details) {
-          throw new Error(`Character "${characterId}" details were not loaded.`);
+          throw new Error(
+            `Character "${characterId}" details were not loaded.`,
+          );
         }
 
         const scenarioNameToIds = new Map<string, string[]>();
@@ -1392,33 +1362,105 @@ export function CharacterImagesPage() {
           />
         ) : null}
 
-        {showTable ? (
-          <div className={s.tableWrap}>
-            <Table
-              columns={columns}
-              rows={showSkeleton ? skeletonRows : rows}
-              getRowProps={
-                showSkeleton
-                  ? undefined
-                  : (_, index) => {
-                      const image = images[index];
-                      if (!image) return {};
-                      return {
-                        className: s.clickableRow,
-                        role: 'link',
-                        tabIndex: 0,
-                        onClick: () =>
-                          navigate(`/character-images/${image.id}`),
-                        onKeyDown: (event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            navigate(`/character-images/${image.id}`);
-                          }
-                        },
-                      };
-                    }
-              }
-            />
+        {showGallery ? (
+          <div className={s.galleryWrap}>
+            <div className={s.galleryGrid}>
+              {showSkeleton
+                ? skeletonCards
+                : images.map((image) => (
+                    <Card
+                      key={image.id}
+                      padding="md"
+                      className={s.imageCard}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => updateSearchParams({ imageId: image.id })}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          updateSearchParams({ imageId: image.id });
+                        }
+                      }}
+                    >
+                      <div className={s.cardHeader}>
+                        <div className={s.cardTitleBlock}>
+                          <Typography variant="body" truncate>
+                            {image.character?.name || 'Unknown character'}
+                          </Typography>
+                          <Typography variant="caption" tone="muted" truncate>
+                            {image.scenario?.name || '-'} ·{' '}
+                            {formatStage(image.stage)}
+                          </Typography>
+                        </div>
+                      </div>
+
+                      <div className={s.previewFrame}>
+                        {image.file?.url ? (
+                          <>
+                            <img
+                              className={s.previewImage}
+                              src={image.file.url}
+                              alt={
+                                image.file.name || image.description || image.id
+                              }
+                              loading="lazy"
+                            />
+                            <div className={s.previewActions}>
+                              <IconButton
+                                as="a"
+                                href={image.file.url}
+                                download={image.file.name}
+                                rel="noopener"
+                                aria-label="Download image"
+                                tooltip="Download image"
+                                variant="ghost"
+                                size="sm"
+                                icon={<DownloadIcon />}
+                                // @ts-expect-error Radix anchor event types are incorrect
+                                onClick={(event) => event.stopPropagation()}
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <div className={s.previewPlaceholder}>
+                            <Typography variant="caption" tone="muted">
+                              No image available.
+                            </Typography>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className={s.cardMeta}>
+                        <Typography variant="caption" tone="muted">
+                          {image.description || ''}
+                        </Typography>
+                        <div className={s.badges}>
+                          <Badge
+                            tone={image.isPregenerated ? 'accent' : 'warning'}
+                            outline={!image.isPregenerated}
+                          >
+                            {image.isPregenerated
+                              ? 'Pregenerated'
+                              : 'Generated'}
+                          </Badge>
+                          {image.isPromotional && (
+                            <Badge
+                              tone={image.isPromotional ? 'warning' : 'accent'}
+                              outline={!image.isPromotional}
+                            >
+                              {image.isPromotional ? 'Promotional' : 'Regular'}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className={s.cardFooter}>
+                          <Typography variant="caption" tone="muted">
+                            {formatDate(image.updatedAt)}
+                          </Typography>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+            </div>
 
             {showFooter ? (
               <div className={s.footer}>
@@ -1458,6 +1500,16 @@ export function CharacterImagesPage() {
             ) : null}
           </div>
         ) : null}
+
+        <CharacterImageDetailsDrawer
+          imageId={selectedImageId}
+          open={Boolean(selectedImageId) && !isDrawerOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              updateSearchParams({ imageId: '' });
+            }
+          }}
+        />
       </Container>
 
       <Drawer
