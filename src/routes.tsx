@@ -1,12 +1,13 @@
 import {
   Navigate,
+  Outlet,
   Route,
   Routes,
   useLocation,
   useParams,
 } from 'react-router-dom';
 
-import { AuthGuard } from '@/app/auth';
+import { AuthGuard, AuthProvider } from '@/app/auth';
 import {
   ActivationsPage,
   ActiveUsersPage,
@@ -20,6 +21,10 @@ import {
   BatchImagesPage,
   BroadcastPage,
   CampaignsPage,
+  CasinoAccessGate,
+  CasinoAnalyticsPage,
+  CasinoChatDetailsPage,
+  CasinoChatsPage,
   CharacterDetailsPage,
   CharacterImagesPage,
   CharacterImagesVectorSearchPage,
@@ -81,14 +86,33 @@ function CharacterImageDrawerRedirect() {
   return <Navigate to={`/character-images${search ? `?${search}` : ''}`} replace />;
 }
 
-// comment
+function AuthProviderRoute() {
+  return (
+    <AuthProvider>
+      <Outlet />
+    </AuthProvider>
+  );
+}
+
 const isX = import.meta.env.VITE_IS_X === 'true';
 const isCampaigns = import.meta.env.VITE_CAMPAIGNS === 'true';
 
+const casinoRoutes = isX ? (
+  <Route path="/casino" element={<CasinoAccessGate />}>
+    <Route index element={<CasinoChatsPage />} />
+    <Route path="chats/:id" element={<CasinoChatDetailsPage />} />
+    <Route path="analytics" element={<CasinoAnalyticsPage />} />
+    <Route path="*" element={<Navigate to="/casino" replace />} />
+  </Route>
+) : (
+  <Route path="/casino/*" element={<Navigate to="/" replace />} />
+);
+
 export function AppRoutes() {
-  if(isCampaigns) {
+  if (isCampaigns) {
     return (
       <Routes>
+        {casinoRoutes}
         <Route path="/" element={<CampaignsPage />} />
       </Routes>
     );
@@ -96,85 +120,88 @@ export function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/auth" element={isX ? <AuthNewPage /> : <AuthPage />} />
-      <Route path="/auth/callback" element={<AuthCallbackPage />} />
-      <Route path="/auth/confirm" element={<ConfirmEmailPage />} />
-      <Route path="/auth/forgot" element={<ForgotPasswordPage />} />
-      <Route path="/auth/reset" element={<ResetPasswordPage />} />
-      <Route element={<AuthGuard />}>
-        <Route path="/" element={<AnalyticsPage />} />
-        <Route
-          path="/analytics/cohort-revenue"
-          element={<CohortRevenuePage />}
-        />
-        <Route path="/analytics/active-users" element={<ActiveUsersPage />} />
-        <Route
-          path="/analytics/scenarios"
-          element={<ScenarioAnalyticsPage />}
-        />
-        <Route path="/ui" element={<UiKitPage />} />
-        <Route path="/characters" element={<CharactersPage />} />
-        <Route path="/characters/:id" element={<CharacterDetailsPage />} />
-        <Route
-          path="/custom-characters/new"
-          element={<CustomCharacterCreatePage />}
-        />
-        <Route
-          path="/custom-characters/:id"
-          element={<CustomCharacterDetailsPage />}
-        />
-        <Route path="/custom-characters" element={<CustomCharactersPage />} />
-        <Route path="/air-purchases" element={<AirPurchasesPage />} />
-        <Route path="/character-images" element={<CharacterImagesPage />} />
-        <Route
-          path="/character-images/vector-search"
-          element={<CharacterImagesVectorSearchPage />}
-        />
-        <Route
-          path="/character-images/:id"
-          element={<CharacterImageDrawerRedirect />}
-        />
-        <Route path="/admins" element={<AdminsPage />} />
-        <Route path="/broadcast" element={<BroadcastPage />} />
-        <Route path="/batch-images" element={<BatchImagesPage />} />
-        <Route
-          path="/batch-images/:id"
-          element={<BatchImageDetailsPage />}
-        />
-        <Route path="/users" element={<UsersPage />} />
-        <Route path="/users/:id" element={<UserDetailsPage />} />
-        <Route path="/user-types" element={<UserTypesPage />} />
-        <Route path="/user-types/new" element={<UserTypeCreatePage />} />
-        <Route path="/user-types/:id" element={<UserTypeUpdatePage />} />
-        <Route path="/user-progress" element={<UserProgressPage />} />
-        <Route path="/activations" element={<ActivationsPage />} />
-        <Route path="/conversions" element={<ConversionsPage />} />
-        <Route path="/chats" element={<ChatsPage />} />
-        <Route path="/chats/:id" element={<ChatDetailsPage />} />
-        <Route path="/generations/new" element={<GenerateImagePage />} />
-        <Route path="/generations" element={<GenerationsPage />} />
-        <Route path="/generations/:id" element={<GenerationDetailsPage />} />
-        <Route path="/gifts" element={<GiftsPage />} />
-        <Route path="/gifts/:id" element={<GiftDetailsPage />} />
-        <Route path="/datasets" element={<DatasetsPage />} />
-        <Route path="/datasets/:id" element={<DatasetDetailsPage />} />
-        <Route path="/videos" element={<VideosPage />} />
-        <Route path="/videos/:id" element={<VideoDetailsPage />} />
-        <Route path="/logs" element={<LogsPage />} />
-        <Route path="/loras" element={<LorasPage />} />
-        <Route path="/poses" element={<PosesPage />} />
-        <Route path="/poses/new" element={<PoseCreatePage />} />
-        <Route path="/poses/:id" element={<PoseUpdatePage />} />
-        <Route path="/posts/analytics" element={<PostAnalyticsPage />} />
-        <Route path="/posts" element={<PostsPage />} />
-        <Route path="/prompts" element={<PromptsPage />} />
-        <Route path="/prompts/new" element={<PromptCreatePage />} />
-        <Route path="/prompts/:id" element={<PromptUpdatePage />} />
-        <Route path="/scenario-gen" element={<ScenarioGenPage />} />
-        <Route path="/scenario-gen/new" element={<ScenarioGenCreatePage />} />
-        <Route path="/scenario-gen/:id" element={<ScenarioGenDetailsPage />} />
-        <Route path="/plans" element={<PlansPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
+      {casinoRoutes}
+      <Route element={<AuthProviderRoute />}>
+        <Route path="/auth" element={isX ? <AuthNewPage /> : <AuthPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        <Route path="/auth/confirm" element={<ConfirmEmailPage />} />
+        <Route path="/auth/forgot" element={<ForgotPasswordPage />} />
+        <Route path="/auth/reset" element={<ResetPasswordPage />} />
+        <Route element={<AuthGuard />}>
+          <Route path="/" element={<AnalyticsPage />} />
+          <Route
+            path="/analytics/cohort-revenue"
+            element={<CohortRevenuePage />}
+          />
+          <Route path="/analytics/active-users" element={<ActiveUsersPage />} />
+          <Route
+            path="/analytics/scenarios"
+            element={<ScenarioAnalyticsPage />}
+          />
+          <Route path="/ui" element={<UiKitPage />} />
+          <Route path="/characters" element={<CharactersPage />} />
+          <Route path="/characters/:id" element={<CharacterDetailsPage />} />
+          <Route
+            path="/custom-characters/new"
+            element={<CustomCharacterCreatePage />}
+          />
+          <Route
+            path="/custom-characters/:id"
+            element={<CustomCharacterDetailsPage />}
+          />
+          <Route path="/custom-characters" element={<CustomCharactersPage />} />
+          <Route path="/air-purchases" element={<AirPurchasesPage />} />
+          <Route path="/character-images" element={<CharacterImagesPage />} />
+          <Route
+            path="/character-images/vector-search"
+            element={<CharacterImagesVectorSearchPage />}
+          />
+          <Route
+            path="/character-images/:id"
+            element={<CharacterImageDrawerRedirect />}
+          />
+          <Route path="/admins" element={<AdminsPage />} />
+          <Route path="/broadcast" element={<BroadcastPage />} />
+          <Route path="/batch-images" element={<BatchImagesPage />} />
+          <Route
+            path="/batch-images/:id"
+            element={<BatchImageDetailsPage />}
+          />
+          <Route path="/users" element={<UsersPage />} />
+          <Route path="/users/:id" element={<UserDetailsPage />} />
+          <Route path="/user-types" element={<UserTypesPage />} />
+          <Route path="/user-types/new" element={<UserTypeCreatePage />} />
+          <Route path="/user-types/:id" element={<UserTypeUpdatePage />} />
+          <Route path="/user-progress" element={<UserProgressPage />} />
+          <Route path="/activations" element={<ActivationsPage />} />
+          <Route path="/conversions" element={<ConversionsPage />} />
+          <Route path="/chats" element={<ChatsPage />} />
+          <Route path="/chats/:id" element={<ChatDetailsPage />} />
+          <Route path="/generations/new" element={<GenerateImagePage />} />
+          <Route path="/generations" element={<GenerationsPage />} />
+          <Route path="/generations/:id" element={<GenerationDetailsPage />} />
+          <Route path="/gifts" element={<GiftsPage />} />
+          <Route path="/gifts/:id" element={<GiftDetailsPage />} />
+          <Route path="/datasets" element={<DatasetsPage />} />
+          <Route path="/datasets/:id" element={<DatasetDetailsPage />} />
+          <Route path="/videos" element={<VideosPage />} />
+          <Route path="/videos/:id" element={<VideoDetailsPage />} />
+          <Route path="/logs" element={<LogsPage />} />
+          <Route path="/loras" element={<LorasPage />} />
+          <Route path="/poses" element={<PosesPage />} />
+          <Route path="/poses/new" element={<PoseCreatePage />} />
+          <Route path="/poses/:id" element={<PoseUpdatePage />} />
+          <Route path="/posts/analytics" element={<PostAnalyticsPage />} />
+          <Route path="/posts" element={<PostsPage />} />
+          <Route path="/prompts" element={<PromptsPage />} />
+          <Route path="/prompts/new" element={<PromptCreatePage />} />
+          <Route path="/prompts/:id" element={<PromptUpdatePage />} />
+          <Route path="/scenario-gen" element={<ScenarioGenPage />} />
+          <Route path="/scenario-gen/new" element={<ScenarioGenCreatePage />} />
+          <Route path="/scenario-gen/:id" element={<ScenarioGenDetailsPage />} />
+          <Route path="/plans" element={<PlansPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+        </Route>
       </Route>
     </Routes>
   );

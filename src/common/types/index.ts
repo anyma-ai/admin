@@ -2,6 +2,7 @@ export * from './activations.type';
 export * from './admin.type';
 export * from './batch-img.type';
 export * from './broadcast.type';
+export * from './casino.type';
 export * from './character.type';
 export * from './character-image.type';
 export * from './chat.type';

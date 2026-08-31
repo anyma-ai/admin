@@ -15,6 +15,12 @@ export { BatchImageDetailsPage } from './batch-images/BatchImageDetailsPage';
 export { BatchImagesPage } from './batch-images/BatchImagesPage';
 export { BroadcastPage } from './broadcast/BroadcastPage';
 export { CampaignsPage } from './campaigns/CampaignsPage';
+export {
+  CasinoAccessGate,
+  CasinoAnalyticsPage,
+  CasinoChatDetailsPage,
+  CasinoChatsPage,
+} from './casino';
 export { CharacterImagesPage } from './character-images/CharacterImagesPage';
 export { CharacterImagesVectorSearchPage } from './character-images/CharacterImagesVectorSearchPage';
 export { CharacterDetailsPage } from './characters/CharacterDetailsPage';
