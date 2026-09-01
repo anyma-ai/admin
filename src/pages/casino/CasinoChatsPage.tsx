@@ -294,7 +294,7 @@ export function CasinoChatsPage() {
               fullWidth
             />
           </Field>
-          <Field label="From (UTC)" labelFor="casino-from">
+          <Field label="From" labelFor="casino-from">
             <Input
               id="casino-from"
               type="datetime-local"

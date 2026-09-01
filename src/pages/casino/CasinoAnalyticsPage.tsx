@@ -195,7 +195,7 @@ export function CasinoAnalyticsPage() {
 
         <div className={s.filters}>
           <FormRow columns={3}>
-            <Field label="From (UTC)" labelFor="casino-analytics-from">
+            <Field label="From" labelFor="casino-analytics-from">
               <Input
                 id="casino-analytics-from"
                 type="datetime-local"
