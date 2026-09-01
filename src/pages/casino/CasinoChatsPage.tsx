@@ -25,6 +25,7 @@ import {
   CASINO_DEFAULT_PAGE_SIZE,
   CASINO_PAGE_SIZE_OPTIONS,
   formatCasinoDate,
+  formatCasinoFromDateTimeForApi,
   formatCasinoFromDateTimeInput,
   formatCasinoUser,
   formatCasinoUserMeta,
@@ -158,7 +159,7 @@ export function CasinoChatsPage() {
     () => ({
       username: username || undefined,
       level,
-      from,
+      from: formatCasinoFromDateTimeForApi(from),
       to: to || undefined,
       order,
       skip: (page - 1) * pageSize,
@@ -319,7 +320,8 @@ export function CasinoChatsPage() {
           </Field>
         </FormRow>
         <Typography variant="caption" tone="muted">
-          From uses UTC date and time. To remains date-only.
+          From uses local date and time and is sent to the API as UTC. To
+          remains date-only.
         </Typography>
         <FormRow columns={2}>
           <Field label="Order" labelFor="casino-order">

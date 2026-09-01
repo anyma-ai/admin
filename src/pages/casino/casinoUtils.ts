@@ -3,7 +3,7 @@ import type { CasinoChat } from '@/common/types';
 export const CASINO_PAGE_SIZE_OPTIONS = [20, 50, 100];
 export const CASINO_DEFAULT_PAGE_SIZE = 20;
 export const CASINO_DEFAULT_ORDER = 'DESC';
-export const CASINO_DEFAULT_FROM_UTC = '2026-08-31T10:00:00.000Z';
+export const CASINO_DEFAULT_FROM_UTC_INSTANT = '2026-08-31T07:00:00.000Z';
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const utcDateTimePattern =
@@ -74,33 +74,44 @@ export function normalizeCasinoDate(value: string | null) {
 
 export function normalizeCasinoFromDateTime(value: string | null) {
   const trimmed = value?.trim() ?? '';
-  if (!trimmed) return CASINO_DEFAULT_FROM_UTC;
+  if (!trimmed) return getDefaultCasinoFromDateTime();
 
   if (datePattern.test(trimmed)) {
     return isValidDateParts(trimmed)
-      ? `${trimmed}T00:00:00.000Z`
-      : CASINO_DEFAULT_FROM_UTC;
+      ? `${trimmed}T00:00`
+      : getDefaultCasinoFromDateTime();
   }
 
   const utcMatch = trimmed.match(utcDateTimePattern);
   if (utcMatch) {
-    return formatUtcDateTimeMatch(utcMatch) ?? CASINO_DEFAULT_FROM_UTC;
+    const parsed = new Date(trimmed);
+    return Number.isNaN(parsed.getTime())
+      ? getDefaultCasinoFromDateTime()
+      : formatDateTimeLocal(parsed);
   }
 
   const localMatch = trimmed.match(localDateTimePattern);
   if (localMatch) {
-    return formatUtcDateTimeMatch(localMatch) ?? CASINO_DEFAULT_FROM_UTC;
+    return formatLocalDateTimeMatch(localMatch) ?? getDefaultCasinoFromDateTime();
   }
 
-  return CASINO_DEFAULT_FROM_UTC;
+  return getDefaultCasinoFromDateTime();
 }
 
 export function formatCasinoFromDateTimeInput(value: string) {
-  return normalizeCasinoFromDateTime(value).slice(0, 16);
+  return normalizeCasinoFromDateTime(value);
 }
 
 export function normalizeCasinoFromDateTimeInput(value: string) {
   return normalizeCasinoFromDateTime(value || null);
+}
+
+export function formatCasinoFromDateTimeForApi(value: string) {
+  const normalized = normalizeCasinoFromDateTime(value);
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime())
+    ? new Date(getDefaultCasinoFromDateTime()).toISOString()
+    : parsed.toISOString();
 }
 
 function isValidDateParts(value: string) {
@@ -120,14 +131,29 @@ function isValidDateParts(value: string) {
   );
 }
 
-function formatUtcDateTimeMatch(match: RegExpMatchArray) {
-  const [, year, month, day, hour, minute, second = '00', millisecond = '000'] =
-    match;
+function formatLocalDateTimeMatch(match: RegExpMatchArray) {
+  const [, year, month, day, hour, minute, second = '00'] = match;
   const date = `${year}-${month}-${day}`;
   if (!isValidDateParts(date)) return null;
-  if (!isValidTimeParts(hour, minute, second, millisecond)) return null;
+  if (!isValidTimeParts(hour, minute, second, '000')) return null;
 
-  return `${date}T${hour}:${minute}:${second}.${millisecond.padEnd(3, '0')}Z`;
+  return `${date}T${hour}:${minute}`;
+}
+
+function getDefaultCasinoFromDateTime() {
+  return formatDateTimeLocal(new Date(CASINO_DEFAULT_FROM_UTC_INSTANT));
+}
+
+function formatDateTimeLocal(value: Date) {
+  return [
+    value.getFullYear(),
+    padDatePart(value.getMonth() + 1),
+    padDatePart(value.getDate()),
+  ].join('-') + `T${padDatePart(value.getHours())}:${padDatePart(value.getMinutes())}`;
+}
+
+function padDatePart(value: number) {
+  return String(value).padStart(2, '0');
 }
 
 function isValidTimeParts(

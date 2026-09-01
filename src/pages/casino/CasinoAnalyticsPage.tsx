@@ -21,6 +21,7 @@ import {
 
 import s from './CasinoPages.module.scss';
 import {
+  formatCasinoFromDateTimeForApi,
   formatCasinoFromDateTimeInput,
   normalizeCasinoDate,
   normalizeCasinoFromDateTime,
@@ -110,7 +111,7 @@ export function CasinoAnalyticsPage() {
 
   const queryParams = useMemo(
     () => ({
-      from,
+      from: formatCasinoFromDateTimeForApi(from),
       to: to || undefined,
       level,
     }),
@@ -234,8 +235,9 @@ export function CasinoAnalyticsPage() {
             </Field>
           </FormRow>
           <Typography variant="caption" tone="muted">
-            From uses UTC date and time. To remains date-only. Empty to and
-            level filters are omitted from requests.
+            From uses local date and time and is sent to the API as UTC. To
+            remains date-only. Empty to and level filters are omitted from
+            requests.
           </Typography>
         </div>
 
