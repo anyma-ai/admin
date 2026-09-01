@@ -25,9 +25,12 @@ import {
   CASINO_DEFAULT_PAGE_SIZE,
   CASINO_PAGE_SIZE_OPTIONS,
   formatCasinoDate,
+  formatCasinoFromDateTimeInput,
   formatCasinoUser,
   formatCasinoUserMeta,
   normalizeCasinoDate,
+  normalizeCasinoFromDateTime,
+  normalizeCasinoFromDateTimeInput,
   parseCasinoLevel,
   parseCasinoPageSize,
   parsePositiveNumber,
@@ -64,7 +67,8 @@ export function CasinoChatsPage() {
   const username = rawUsername.trim();
   const level = parseCasinoLevel(rawLevel);
   const levelValue = level === undefined ? '' : String(level);
-  const from = normalizeCasinoDate(rawFrom);
+  const from = normalizeCasinoFromDateTime(rawFrom);
+  const fromInputValue = formatCasinoFromDateTimeInput(from);
   const to = normalizeCasinoDate(rawTo);
   const order = ORDER_VALUES.has(rawOrder ?? '')
     ? (rawOrder as CasinoOrder)
@@ -89,9 +93,7 @@ export function CasinoChatsPage() {
       }
 
       if (update.from !== undefined) {
-        const nextFrom = normalizeCasinoDate(update.from);
-        if (nextFrom) next.set('from', nextFrom);
-        else next.delete('from');
+        next.set('from', normalizeCasinoFromDateTimeInput(update.from));
       }
 
       if (update.to !== undefined) {
@@ -130,7 +132,7 @@ export function CasinoChatsPage() {
     if (
       rawUsername === username &&
       (rawLevel ?? '') === levelValue &&
-      (rawFrom ?? '') === from &&
+      rawFrom === from &&
       (rawTo ?? '') === to &&
       (rawOrder ?? CASINO_DEFAULT_ORDER) === order
     ) {
@@ -156,7 +158,7 @@ export function CasinoChatsPage() {
     () => ({
       username: username || undefined,
       level,
-      from: from || undefined,
+      from,
       to: to || undefined,
       order,
       skip: (page - 1) * pageSize,
@@ -291,11 +293,11 @@ export function CasinoChatsPage() {
               fullWidth
             />
           </Field>
-          <Field label="From" labelFor="casino-from">
+          <Field label="From (UTC)" labelFor="casino-from">
             <Input
               id="casino-from"
-              type="date"
-              value={from}
+              type="datetime-local"
+              value={fromInputValue}
               size="sm"
               onChange={(event) =>
                 updateSearchParams({ from: event.target.value, page: 1 })
@@ -316,6 +318,9 @@ export function CasinoChatsPage() {
             />
           </Field>
         </FormRow>
+        <Typography variant="caption" tone="muted">
+          From uses UTC date and time. To remains date-only.
+        </Typography>
         <FormRow columns={2}>
           <Field label="Order" labelFor="casino-order">
             <Select

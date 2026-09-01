@@ -20,7 +20,13 @@ import {
 } from '@/atoms';
 
 import s from './CasinoPages.module.scss';
-import { normalizeCasinoDate, parseCasinoLevel } from './casinoUtils';
+import {
+  formatCasinoFromDateTimeInput,
+  normalizeCasinoDate,
+  normalizeCasinoFromDateTime,
+  normalizeCasinoFromDateTimeInput,
+  parseCasinoLevel,
+} from './casinoUtils';
 
 type QueryUpdate = {
   from?: string;
@@ -59,7 +65,8 @@ export function CasinoAnalyticsPage() {
   const rawTo = searchParams.get('to');
   const rawLevel = searchParams.get('level');
 
-  const from = normalizeCasinoDate(rawFrom);
+  const from = normalizeCasinoFromDateTime(rawFrom);
+  const fromInputValue = formatCasinoFromDateTimeInput(from);
   const to = normalizeCasinoDate(rawTo);
   const level = parseCasinoLevel(rawLevel);
   const levelValue = level === undefined ? '' : String(level);
@@ -69,9 +76,7 @@ export function CasinoAnalyticsPage() {
       const next = new URLSearchParams(searchParams);
 
       if (update.from !== undefined) {
-        const nextFrom = normalizeCasinoDate(update.from);
-        if (nextFrom) next.set('from', nextFrom);
-        else next.delete('from');
+        next.set('from', normalizeCasinoFromDateTimeInput(update.from));
       }
 
       if (update.to !== undefined) {
@@ -93,7 +98,7 @@ export function CasinoAnalyticsPage() {
 
   useEffect(() => {
     if (
-      (rawFrom ?? '') === from &&
+      rawFrom === from &&
       (rawTo ?? '') === to &&
       (rawLevel ?? '') === levelValue
     ) {
@@ -105,7 +110,7 @@ export function CasinoAnalyticsPage() {
 
   const queryParams = useMemo(
     () => ({
-      from: from || undefined,
+      from,
       to: to || undefined,
       level,
     }),
@@ -189,11 +194,11 @@ export function CasinoAnalyticsPage() {
 
         <div className={s.filters}>
           <FormRow columns={3}>
-            <Field label="From" labelFor="casino-analytics-from">
+            <Field label="From (UTC)" labelFor="casino-analytics-from">
               <Input
                 id="casino-analytics-from"
-                type="date"
-                value={from}
+                type="datetime-local"
+                value={fromInputValue}
                 size="sm"
                 onChange={(event) =>
                   updateSearchParams({ from: event.target.value })
@@ -229,7 +234,8 @@ export function CasinoAnalyticsPage() {
             </Field>
           </FormRow>
           <Typography variant="caption" tone="muted">
-            Dates use YYYY-MM-DD and empty filters are omitted from requests.
+            From uses UTC date and time. To remains date-only. Empty to and
+            level filters are omitted from requests.
           </Typography>
         </div>
 

@@ -3,8 +3,13 @@ import type { CasinoChat } from '@/common/types';
 export const CASINO_PAGE_SIZE_OPTIONS = [20, 50, 100];
 export const CASINO_DEFAULT_PAGE_SIZE = 20;
 export const CASINO_DEFAULT_ORDER = 'DESC';
+export const CASINO_DEFAULT_FROM_UTC = '2026-08-31T10:00:00.000Z';
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+const utcDateTimePattern =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.(\d{1,3}))?Z$/;
+const localDateTimePattern =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
 
 const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
@@ -62,5 +67,92 @@ export function parseCasinoPageSize(value: string | null) {
 
 export function normalizeCasinoDate(value: string | null) {
   const trimmed = value?.trim() ?? '';
-  return datePattern.test(trimmed) ? trimmed : '';
+  return datePattern.test(trimmed) && isValidDateParts(trimmed)
+    ? trimmed
+    : '';
+}
+
+export function normalizeCasinoFromDateTime(value: string | null) {
+  const trimmed = value?.trim() ?? '';
+  if (!trimmed) return CASINO_DEFAULT_FROM_UTC;
+
+  if (datePattern.test(trimmed)) {
+    return isValidDateParts(trimmed)
+      ? `${trimmed}T00:00:00.000Z`
+      : CASINO_DEFAULT_FROM_UTC;
+  }
+
+  const utcMatch = trimmed.match(utcDateTimePattern);
+  if (utcMatch) {
+    return formatUtcDateTimeMatch(utcMatch) ?? CASINO_DEFAULT_FROM_UTC;
+  }
+
+  const localMatch = trimmed.match(localDateTimePattern);
+  if (localMatch) {
+    return formatUtcDateTimeMatch(localMatch) ?? CASINO_DEFAULT_FROM_UTC;
+  }
+
+  return CASINO_DEFAULT_FROM_UTC;
+}
+
+export function formatCasinoFromDateTimeInput(value: string) {
+  return normalizeCasinoFromDateTime(value).slice(0, 16);
+}
+
+export function normalizeCasinoFromDateTimeInput(value: string) {
+  return normalizeCasinoFromDateTime(value || null);
+}
+
+function isValidDateParts(value: string) {
+  const [yearText, monthText, dayText] = value.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return false;
+  }
+
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  );
+}
+
+function formatUtcDateTimeMatch(match: RegExpMatchArray) {
+  const [, year, month, day, hour, minute, second = '00', millisecond = '000'] =
+    match;
+  const date = `${year}-${month}-${day}`;
+  if (!isValidDateParts(date)) return null;
+  if (!isValidTimeParts(hour, minute, second, millisecond)) return null;
+
+  return `${date}T${hour}:${minute}:${second}.${millisecond.padEnd(3, '0')}Z`;
+}
+
+function isValidTimeParts(
+  hourText: string,
+  minuteText: string,
+  secondText: string,
+  millisecondText: string,
+) {
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  const second = Number(secondText);
+  const millisecond = Number(millisecondText);
+
+  return (
+    Number.isInteger(hour) &&
+    hour >= 0 &&
+    hour <= 23 &&
+    Number.isInteger(minute) &&
+    minute >= 0 &&
+    minute <= 59 &&
+    Number.isInteger(second) &&
+    second >= 0 &&
+    second <= 59 &&
+    Number.isInteger(millisecond) &&
+    millisecond >= 0 &&
+    millisecond <= 999
+  );
 }
