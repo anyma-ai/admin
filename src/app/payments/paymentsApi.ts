@@ -5,6 +5,7 @@ import type { IPayment, PaymentsQuery } from '@/common/types';
 import type { PaginatedResponse } from '../paginated-response.type';
 
 const fallbackError = 'Unable to load payments.';
+const EXPORT_PAGE_SIZE = 1000;
 
 export async function getPayments(params: PaymentsQuery) {
   const query = new URLSearchParams();
@@ -28,4 +29,26 @@ export async function getPayments(params: PaymentsQuery) {
   }
 
   return (await res.json()) as PaginatedResponse<IPayment>;
+}
+
+export async function getAllPayments(
+  params: Omit<PaymentsQuery, 'skip' | 'take'>,
+) {
+  const payments: IPayment[] = [];
+  let total = 0;
+
+  do {
+    const response = await getPayments({
+      ...params,
+      skip: payments.length,
+      take: EXPORT_PAGE_SIZE,
+    });
+
+    total = response.total;
+    payments.push(...response.data);
+
+    if (response.data.length === 0) break;
+  } while (payments.length < total);
+
+  return payments;
 }

@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import { downloadCsvFile } from '@/app/analytics';
 import { useCharacterDetails, useCharacters } from '@/app/characters';
-import { usePayments } from '@/app/payments';
+import { getAllPayments, usePayments } from '@/app/payments';
 import { usePlans } from '@/app/plans';
+import { notifyError, notifySuccess } from '@/app/toast';
 import { useUsers } from '@/app/users';
+import { DownloadIcon } from '@/assets/icons';
 import {
   Alert,
   Button,
   Container,
   EmptyState,
   Field,
+  IconButton,
   Input,
   Pagination,
   Select,
@@ -139,6 +143,7 @@ function RefFilter({
 export function PaymentsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [isExporting, setIsExporting] = useState(false);
 
   const rawPlanId = searchParams.get('planId') ?? '';
   const rawUserId = searchParams.get('userId') ?? '';
@@ -350,7 +355,7 @@ export function PaymentsPage() {
     if (!exists) updateSearchParams({ scenarioId: '', page: 1 }, true);
   }, [characterDetailsQuery.data, characterId, scenarioId, updateSearchParams]);
 
-  const queryParams = useMemo(
+  const filterParams = useMemo(
     () => ({
       planId: planId || undefined,
       userId: userId || undefined,
@@ -360,16 +365,12 @@ export function PaymentsPage() {
       createdAfter: createdAfter || undefined,
       createdBefore: createdBefore || undefined,
       order: order as 'ASC' | 'DESC',
-      skip: (page - 1) * pageSize,
-      take: pageSize,
     }),
     [
       characterId,
       createdAfter,
       createdBefore,
       order,
-      page,
-      pageSize,
       planId,
       ref,
       scenarioId,
@@ -377,7 +378,17 @@ export function PaymentsPage() {
     ],
   );
 
-  const { data, error, isLoading, refetch } = usePayments(queryParams);
+  const queryParams = useMemo(
+    () => ({
+      ...filterParams,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    [filterParams, page, pageSize],
+  );
+
+  const { data, error, isFetching, isLoading, refetch } =
+    usePayments(queryParams);
   const payments = useMemo(() => data?.data ?? [], [data?.data]);
   const total = data?.total ?? 0;
   const effectiveTake = data?.take ?? pageSize;
@@ -501,10 +512,74 @@ export function PaymentsPage() {
   const rangeEnd =
     total === 0 ? 0 : Math.min(effectiveSkip + effectiveTake, total);
 
+  const handleExportCsv = useCallback(async () => {
+    if (isExporting || isFetching || error || total === 0) return;
+
+    setIsExporting(true);
+    try {
+      const exportPayments = await getAllPayments(filterParams);
+
+      downloadCsvFile(
+        {
+          headers: [
+            'Payment',
+            'Amount',
+            'Plan',
+            'User',
+            'Character',
+            'Scenario',
+            'Ref',
+            'Created',
+          ],
+          rows: exportPayments.map((payment) => [
+            payment.id,
+            payment.amount,
+            `${payment.plan.code} / ${formatPlanType(payment.plan.type)}`,
+            `${formatUserName(payment.user)} / ${formatUserMeta(payment.user)}`,
+            payment.character
+              ? formatCharacterSelectLabel(
+                  payment.character.name,
+                  payment.character.type,
+                )
+              : '-',
+            payment.scenario?.name || '-',
+            payment.ref || '-',
+            formatDate(payment.createdAt),
+          ]),
+        },
+        `payments-${createdAfter || 'all'}-to-${createdBefore || 'all'}.csv`,
+      );
+      notifySuccess('CSV exported.', 'CSV exported.');
+    } catch (exportError) {
+      notifyError(exportError, 'Unable to export CSV.');
+    } finally {
+      setIsExporting(false);
+    }
+  }, [
+    createdAfter,
+    createdBefore,
+    error,
+    filterParams,
+    isExporting,
+    isFetching,
+    total,
+  ]);
+
   return (
     <AppShell>
       <Container size="wide" className={s.page}>
-        <Typography variant="h2">Payments</Typography>
+        <div className={s.header}>
+          <Typography variant="h2">Payments</Typography>
+          <IconButton
+            aria-label="Export CSV"
+            tooltip="Export CSV"
+            icon={<DownloadIcon />}
+            variant="ghost"
+            onClick={handleExportCsv}
+            loading={isExporting}
+            disabled={isFetching || Boolean(error) || total === 0}
+          />
+        </div>
 
         <div className={s.filters}>
           <div className={s.filterRow}>

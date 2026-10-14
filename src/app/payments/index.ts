@@ -1,2 +1,2 @@
-export { getPayments } from './paymentsApi';
+export { getAllPayments, getPayments } from './paymentsApi';
 export { usePayments } from './queries';
