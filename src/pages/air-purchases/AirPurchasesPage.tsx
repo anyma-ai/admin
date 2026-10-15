@@ -51,10 +51,13 @@ const ORDER_OPTIONS = [
 
 const TYPE_OPTIONS = [
   { label: 'All types', value: '' },
+  { label: 'Photo', value: InAppPurchaseType.Photo },
   { label: 'Video', value: InAppPurchaseType.Video },
   { label: 'Gift', value: InAppPurchaseType.Gift },
   { label: 'Custom character', value: InAppPurchaseType.CustomCharacter },
   { label: 'Custom scenario', value: InAppPurchaseType.CustomScenario },
+  { label: 'Content unlock', value: InAppPurchaseType.ContentUnlock },
+  { label: 'Voice', value: InAppPurchaseType.Voice },
 ];
 
 const ORDER_VALUES = new Set(ORDER_OPTIONS.map((option) => option.value));
@@ -67,20 +70,26 @@ const DEFAULT_PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 400;
 
 const PURCHASE_TYPE_LABELS: Record<InAppPurchaseType, string> = {
+  [InAppPurchaseType.Photo]: 'Photo',
   [InAppPurchaseType.Video]: 'Video',
   [InAppPurchaseType.Gift]: 'Gift',
   [InAppPurchaseType.CustomCharacter]: 'Custom character',
   [InAppPurchaseType.CustomScenario]: 'Custom scenario',
+  [InAppPurchaseType.ContentUnlock]: 'Content unlock', 
+  [InAppPurchaseType.Voice]: 'Voice'
 };
 
 const PURCHASE_TYPE_TONES: Record<
   InAppPurchaseType,
   'accent' | 'success' | 'warning' | 'danger'
 > = {
+  [InAppPurchaseType.Photo]: 'accent',
   [InAppPurchaseType.Video]: 'accent',
   [InAppPurchaseType.Gift]: 'success',
   [InAppPurchaseType.CustomCharacter]: 'warning',
   [InAppPurchaseType.CustomScenario]: 'danger',
+  [InAppPurchaseType.ContentUnlock]: 'danger',
+  [InAppPurchaseType.Voice]: 'success',
 };
 
 const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {

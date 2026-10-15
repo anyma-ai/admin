@@ -4,11 +4,14 @@ import type { IScenario, IScenarioVideo } from "./scenario.type";
 import type { ITgUser } from "./tg-user.type";
 
 export enum InAppPurchaseType {
+    Photo = 'photo',
     Video = 'video',
     Gift = 'gift',
     CustomCharacter = 'custom_character',
     CustomScenario = 'custom_scenario',
-  }
+    ContentUnlock = 'content_unlock',
+    Voice = 'voice',
+}
 
 export interface IInAppPurchaseEntity {
     id: string;
