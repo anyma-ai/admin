@@ -31,6 +31,7 @@ export { ConversionsPage } from './conversions/ConversionsPage';
 export { CustomCharacterCreatePage } from './custom-characters/CustomCharacterCreatePage';
 export { CustomCharacterDetailsPage } from './custom-characters/CustomCharacterDetailsPage';
 export { CustomCharactersPage } from './custom-characters/CustomCharactersPage';
+export { CustomersPage } from './customers/CustomersPage';
 export { DatasetDetailsPage } from './datasets/DatasetDetailsPage';
 export { DatasetsPage } from './datasets/DatasetsPage';
 export { GenerateImagePage } from './generations/GenerateImagePage';

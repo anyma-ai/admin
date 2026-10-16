@@ -29,7 +29,9 @@ export {
   formatCount,
   formatMetricDelta,
   formatMetricValue,
+  formatPercent,
   formatStars,
+  formatUsd,
 } from './format';
 export type {
   AnalyticsMetricDefinition,

@@ -22,6 +22,7 @@ import {
   UsersRoundIcon,
 } from '@/assets/icons';
 import { Button } from '@/atoms';
+import { isX } from '@/common/is-x';
 
 import s from './Navigation.module.scss';
 
@@ -57,6 +58,9 @@ const navItems: NavItem[] = [
   { label: 'Conversions', to: '/conversions', icon: <ChartIcon /> },
   { label: 'Air Purchases', to: '/air-purchases', icon: <DollarSignIcon /> },
   { label: 'Payments', to: '/payments', icon: <DollarSignIcon /> },
+  ...(isX
+    ? [{ label: 'Customers', to: '/customers', icon: <UsersRoundIcon /> }]
+    : []),
   { label: 'Chats', to: '/chats', icon: <SendIcon /> },
   { label: 'LoRAs', to: '/loras', icon: <LayersIcon /> },
   { label: 'Plans', to: '/plans', icon: <DollarSignIcon /> },

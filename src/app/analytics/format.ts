@@ -33,7 +33,7 @@ export function formatStars(value: number, precision = 2) {
   return `${formatCount(value, precision)}${STAR_SUFFIX}`;
 }
 
-function formatUsd(value: number, precision = 2) {
+export function formatUsd(value: number, precision = 2) {
   const key = `usd-${precision}`;
   const existing = currencyFormatterCache.get(key);
   if (existing) return existing.format(value);
@@ -47,7 +47,7 @@ function formatUsd(value: number, precision = 2) {
   return formatter.format(value);
 }
 
-function formatPercent(value: number, precision = 1) {
+export function formatPercent(value: number, precision = 1) {
   const formatter = getNumberFormatter({
     maximumFractionDigits: precision,
     minimumFractionDigits: precision,

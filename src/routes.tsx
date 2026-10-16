@@ -37,6 +37,7 @@ import {
   CustomCharacterCreatePage,
   CustomCharacterDetailsPage,
   CustomCharactersPage,
+  CustomersPage,
   DatasetDetailsPage,
   DatasetsPage,
   ForgotPasswordPage,
@@ -153,6 +154,9 @@ export function AppRoutes() {
           <Route path="/custom-characters" element={<CustomCharactersPage />} />
           <Route path="/air-purchases" element={<AirPurchasesPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
+          {isX ? (
+            <Route path="/customers" element={<CustomersPage />} />
+          ) : null}
           <Route path="/character-images" element={<CharacterImagesPage />} />
           <Route
             path="/character-images/vector-search"

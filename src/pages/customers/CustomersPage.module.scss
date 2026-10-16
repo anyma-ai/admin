@@ -1,0 +1,96 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-bottom: var(--space-8);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.filterRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.filterField {
+  flex: 1 1 220px;
+  min-width: 220px;
+}
+
+.filterFieldSm {
+  flex: 0 1 170px;
+  min-width: 170px;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.kpiCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-base);
+  box-shadow: none;
+}
+
+.tableWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.userCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 190px;
+}
+
+.linkButton {
+  justify-content: flex-start;
+  width: fit-content;
+}
+
+.alignRight {
+  display: block;
+  width: 100%;
+  text-align: right;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.paginationRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
