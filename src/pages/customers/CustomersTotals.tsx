@@ -20,6 +20,12 @@ function formatOptional(
 }
 
 function buildCards(totals: CustomerTotals): TotalCard[] {
+  const paymentsShare = (value: number) =>
+    formatOptional(
+      totals.payments > 0 ? value / totals.payments : null,
+      formatPercent,
+    );
+
   return [
     { label: 'Revenue', value: formatUsd(totals.revenue) },
     {
@@ -30,21 +36,30 @@ function buildCards(totals: CustomerTotals): TotalCard[] {
     { label: 'Customers', value: formatCount(totals.customers) },
     { label: 'Payments', value: formatCount(totals.payments) },
     {
-      label: 'Subscription / Credits',
-      value: `${formatCount(totals.subscriptions)} / ${formatCount(totals.credits)}`,
-    },
-    {
-      label: 'Subscriptions revenue',
-      value: formatUsd(totals.subscriptionsRevenue),
-    },
-    { label: 'Credits revenue', value: formatUsd(totals.creditsRevenue) },
-    {
       label: 'Avg payments',
       value: formatOptional(totals.avgPayments, (value) =>
         formatCount(value, 2),
       ),
       meta: 'Per customer',
     },
+    {
+      label: 'Time between',
+      value: formatOptional(
+        totals.avgDaysBetween,
+        (value) => `${formatCount(value, 1)} days`,
+      ),
+      meta: `Avg gap over ${formatCount(totals.repeatPayments)} repeat payments`,
+    },
+    {
+      label: 'Subscription / Credits',
+      value: `${formatCount(totals.subscriptions)} / ${formatCount(totals.credits)}`,
+      meta: `${paymentsShare(totals.subscriptions)} / ${paymentsShare(totals.credits)}`,
+    },
+    {
+      label: 'Subscriptions revenue',
+      value: formatUsd(totals.subscriptionsRevenue),
+    },
+    { label: 'Credits revenue', value: formatUsd(totals.creditsRevenue) },
     {
       label: '2+ payments',
       value: formatCount(totals.twoPlusPayments),
@@ -54,14 +69,6 @@ function buildCards(totals: CustomerTotals): TotalCard[] {
       label: '3+ payments',
       value: formatCount(totals.threePlusPayments),
       meta: `${formatOptional(totals.threePlusShare, formatPercent)} of customers`,
-    },
-    {
-      label: 'Time between',
-      value: formatOptional(
-        totals.avgDaysBetween,
-        (value) => `${formatCount(value, 1)} days`,
-      ),
-      meta: `Avg gap over ${formatCount(totals.repeatPayments)} repeat payments`,
     },
     {
       label: 'Subscription first',
