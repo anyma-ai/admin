@@ -22,10 +22,17 @@ function formatOptional(
 function buildCards(totals: CustomerTotals): TotalCard[] {
   return [
     { label: 'Revenue', value: formatUsd(totals.revenue) },
+    {
+      label: 'LTV',
+      value: formatOptional(totals.ltv, formatUsd),
+      meta: 'Revenue / customers',
+    },
     { label: 'Customers', value: formatCount(totals.customers) },
     { label: 'Payments', value: formatCount(totals.payments) },
-    { label: 'Subscriptions', value: formatCount(totals.subscriptions) },
-    { label: 'Credits', value: formatCount(totals.credits) },
+    {
+      label: 'Subscription / Credits',
+      value: `${formatCount(totals.subscriptions)} / ${formatCount(totals.credits)}`,
+    },
     {
       label: 'Subscriptions revenue',
       value: formatUsd(totals.subscriptionsRevenue),
@@ -49,11 +56,6 @@ function buildCards(totals: CustomerTotals): TotalCard[] {
       meta: `${formatOptional(totals.threePlusShare, formatPercent)} of customers`,
     },
     {
-      label: 'LTV',
-      value: formatOptional(totals.ltv, formatUsd),
-      meta: 'Revenue / customers',
-    },
-    {
       label: 'Time between',
       value: formatOptional(
         totals.avgDaysBetween,
@@ -69,7 +71,7 @@ function buildCards(totals: CustomerTotals): TotalCard[] {
   ];
 }
 
-const SKELETON_COUNT = 13;
+const SKELETON_COUNT = 12;
 
 export function CustomersTotals({
   totals,
