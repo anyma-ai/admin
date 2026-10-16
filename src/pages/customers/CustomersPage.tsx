@@ -49,12 +49,12 @@ type QueryUpdate = {
 };
 
 const ANY_FILTER = 'any';
-const DEFAULT_FILTER: FilterValue = 'firstPayed';
+const DEFAULT_FILTER: FilterValue = ANY_FILTER;
 const FILTER_OPTIONS: { label: string; value: FilterValue }[] = [
+  { label: 'All time', value: ANY_FILTER },
   { label: 'First payment month', value: 'firstPayed' },
   { label: 'Registration month', value: 'registered' },
   { label: 'Payments within month', value: 'within' },
-  { label: 'All time', value: ANY_FILTER },
 ];
 const FILTER_VALUES = new Set<string>(
   FILTER_OPTIONS.map((option) => option.value),
@@ -332,29 +332,30 @@ export function CustomersPage() {
                 }
               />
             </Field>
-            <Field
-              className={s.filterFieldSm}
-              label="Month"
-              labelFor="customers-month"
-            >
-              <Input
-                id="customers-month"
-                type="month"
-                size="sm"
-                value={month}
-                onChange={(event) =>
-                  updateSearchParams({
-                    month:
-                      event.target.value === defaultMonth
-                        ? ''
-                        : event.target.value,
-                    page: 1,
-                  })
-                }
-                disabled={filterType === ANY_FILTER}
-                fullWidth
-              />
-            </Field>
+            {filterType === ANY_FILTER ? null : (
+              <Field
+                className={s.filterFieldSm}
+                label="Month"
+                labelFor="customers-month"
+              >
+                <Input
+                  id="customers-month"
+                  type="month"
+                  size="sm"
+                  value={month}
+                  onChange={(event) =>
+                    updateSearchParams({
+                      month:
+                        event.target.value === defaultMonth
+                          ? ''
+                          : event.target.value,
+                      page: 1,
+                    })
+                  }
+                  fullWidth
+                />
+              </Field>
+            )}
             <Field
               className={s.filterField}
               label="Plan"
