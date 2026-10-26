@@ -111,6 +111,10 @@ export interface ICharacterDetails extends ICharacter {
   personality: CharacterPersonality[];
   avatarPrompt?: string;
   age: number;
+  voice?: {
+    id: string;
+    name: string;
+  } | null;
   eyeColor: CharacterEyeColor;
 }
 

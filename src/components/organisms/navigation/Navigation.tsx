@@ -51,6 +51,7 @@ const navItems: NavItem[] = [
   { label: 'Datasets', to: '/datasets', icon: <CircleDotIcon /> },
   { label: 'Videos', to: '/videos', icon: <ImageIcon /> },
   { label: 'Gifts', to: '/gifts', icon: <GiftIcon /> },
+  { label: 'Voices', to: '/voices', icon: <AudioLinesIcon /> },
   { label: 'Users', to: '/users', icon: <UserIcon /> },
   { label: 'User Types', to: '/user-types', icon: <UserIcon /> },
   { label: 'User Progress', to: '/user-progress', icon: <ChartIcon /> },

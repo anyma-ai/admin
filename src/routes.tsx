@@ -73,6 +73,7 @@ import {
   UserTypeUpdatePage,
   VideoDetailsPage,
   VideosPage,
+  VoicesPage,
 } from '@/pages';
 
 function CharacterImageDrawerRedirect() {
@@ -188,6 +189,7 @@ export function AppRoutes() {
           <Route path="/generations/:id" element={<GenerationDetailsPage />} />
           <Route path="/gifts" element={<GiftsPage />} />
           <Route path="/gifts/:id" element={<GiftDetailsPage />} />
+          <Route path="/voices" element={<VoicesPage />} />
           <Route path="/datasets" element={<DatasetsPage />} />
           <Route path="/datasets/:id" element={<DatasetDetailsPage />} />
           <Route path="/videos" element={<VideosPage />} />

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useLoras } from '@/app/loras';
 import { notifyError } from '@/app/toast';
+import { useVoices } from '@/app/voices';
 import {
   Button,
   Checkbox,
@@ -28,7 +29,7 @@ import {
   type IFile,
 } from '@/common/types';
 import { characterTypeOptions } from '@/common/utils';
-import { Drawer, FileUpload } from '@/components/molecules';
+import { Drawer, FileUpload, SearchSelect } from '@/components/molecules';
 
 import {
   BODY_TYPE_OPTIONS,
@@ -57,6 +58,7 @@ export type CharacterFormValues = {
   isActive: boolean;
   isFeatured: boolean;
   loraId: string;
+  voiceId: string;
   description: string;
   personality: CharacterPersonality[];
   avatarId: string;
@@ -66,6 +68,11 @@ export type CharacterFormValues = {
 export type CharacterLoraOption = {
   id: string;
   fileName: string;
+};
+
+export type CharacterVoiceOption = {
+  id: string;
+  name: string;
 };
 
 export const DEFAULT_CHARACTER_FORM_VALUES: CharacterFormValues = {
@@ -83,6 +90,7 @@ export const DEFAULT_CHARACTER_FORM_VALUES: CharacterFormValues = {
   isActive: true,
   isFeatured: false,
   loraId: '',
+  voiceId: '',
   description: '',
   personality: [],
   avatarId: '',
@@ -97,6 +105,7 @@ type CharacterFormDrawerProps = {
   initialAvatarFile?: IFile | null;
   initialPromoFile?: IFile | null;
   initialLoraOption?: CharacterLoraOption | null;
+  initialVoiceOption?: CharacterVoiceOption | null;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: CharacterFormValues) => Promise<void>;
   isSubmitting?: boolean;
@@ -130,6 +139,7 @@ export function CharacterFormDrawer({
   initialAvatarFile = null,
   initialPromoFile = null,
   initialLoraOption = null,
+  initialVoiceOption = null,
   onOpenChange,
   onSubmit,
   isSubmitting = false,
@@ -167,6 +177,31 @@ export function CharacterFormDrawer({
     return list;
   }, [initialLoraOption, loraData?.data]);
 
+  const [voiceSearch, setVoiceSearch] = useState('');
+  const debouncedVoiceSearch = useDebouncedValue(voiceSearch, 300);
+
+  const voiceQueryParams = useMemo(
+    () => ({
+      search: debouncedVoiceSearch.trim() || undefined,
+      order: 'DESC',
+      skip: 0,
+      take: 50,
+    }),
+    [debouncedVoiceSearch],
+  );
+  const { data: voiceData, isLoading: isVoiceLoading } =
+    useVoices(voiceQueryParams);
+
+  const voiceOptions = useMemo(
+    () =>
+      (voiceData?.data ?? []).map((voice) => ({
+        id: voice.id,
+        label: voice.name,
+        meta: voice.key,
+      })),
+    [voiceData?.data],
+  );
+
   useEffect(() => {
     if (!open) return;
 
@@ -175,6 +210,7 @@ export function CharacterFormDrawer({
     setPromoFile(initialPromoFile);
     setShowErrors(false);
     setLoraSearch('');
+    setVoiceSearch('');
   }, [initialAvatarFile, initialPromoFile, initialValues, open]);
 
   const validationErrors = useMemo(() => {
@@ -255,6 +291,7 @@ export function CharacterFormDrawer({
       values.isActive !== initialValues.isActive ||
       values.isFeatured !== initialValues.isFeatured ||
       values.loraId !== initialValues.loraId ||
+      values.voiceId !== initialValues.voiceId ||
       values.description !== initialValues.description ||
       normalizePersonality(values.personality).join('|') !==
         normalizePersonality(initialValues.personality).join('|') ||
@@ -660,33 +697,59 @@ export function CharacterFormDrawer({
           <div className={s.sectionHeader}>
             <Typography variant="control">Generation</Typography>
             <Typography variant="meta" tone="muted">
-              LoRA assignment and descriptive context.
+              LoRA, voice, and descriptive context.
             </Typography>
           </div>
 
           <Stack gap="16px">
-            <Field
-              label="LoRA"
-              labelFor="character-form-lora"
-              error={validationErrors.loraId}
-            >
-              <LoraSelect
-                id="character-form-lora"
-                value={values.loraId}
-                options={loraOptions.map((lora) => ({
-                  id: lora.id,
-                  fileName: lora.fileName,
-                }))}
-                search={loraSearch}
-                onSearchChange={setLoraSearch}
-                onSelect={(value) =>
-                  setValues((prev) => ({ ...prev, loraId: value }))
-                }
-                placeholder={isLoraLoading ? 'Loading LoRAs...' : 'Select LoRA'}
-                disabled={isLoraLoading}
-                loading={isLoraLoading}
-              />
-            </Field>
+            <FormRow columns={2}>
+              <Field
+                label="LoRA"
+                labelFor="character-form-lora"
+                error={validationErrors.loraId}
+              >
+                <LoraSelect
+                  id="character-form-lora"
+                  value={values.loraId}
+                  options={loraOptions.map((lora) => ({
+                    id: lora.id,
+                    fileName: lora.fileName,
+                  }))}
+                  search={loraSearch}
+                  onSearchChange={setLoraSearch}
+                  onSelect={(value) =>
+                    setValues((prev) => ({ ...prev, loraId: value }))
+                  }
+                  placeholder={
+                    isLoraLoading ? 'Loading LoRAs...' : 'Select LoRA'
+                  }
+                  disabled={isLoraLoading}
+                  loading={isLoraLoading}
+                />
+              </Field>
+              <Field label="Voice" labelFor="character-form-voice">
+                <SearchSelect
+                  id="character-form-voice"
+                  value={values.voiceId}
+                  valueLabel={
+                    initialVoiceOption?.id === values.voiceId
+                      ? initialVoiceOption.name
+                      : undefined
+                  }
+                  options={voiceOptions}
+                  search={voiceSearch}
+                  onSearchChange={setVoiceSearch}
+                  onSelect={(value) =>
+                    setValues((prev) => ({ ...prev, voiceId: value }))
+                  }
+                  placeholder="Select voice"
+                  loading={isVoiceLoading}
+                  emptyLabel="No voices found."
+                  loadingLabel="Loading voices..."
+                  clearLabel="No voice"
+                />
+              </Field>
+            </FormRow>
 
             <Field label="Description" labelFor="character-form-description">
               <Textarea

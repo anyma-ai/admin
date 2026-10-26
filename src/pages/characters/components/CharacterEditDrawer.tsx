@@ -47,6 +47,7 @@ export function CharacterEditDrawer({
         isActive: true,
         isFeatured: false,
         loraId: '',
+        voiceId: '',
         description: '',
         personality: [],
         avatarId: '',
@@ -69,6 +70,7 @@ export function CharacterEditDrawer({
       isActive: character.isActive,
       isFeatured: Boolean(character.isFeatured),
       loraId: character.lora?.id ?? '',
+      voiceId: character.voice?.id ?? '',
       description: character.description ?? '',
       personality: character.personality ?? [],
       avatarId: character.avatar?.id ?? '',
@@ -94,6 +96,7 @@ export function CharacterEditDrawer({
             }
           : null
       }
+      initialVoiceOption={character.voice ?? null}
       onOpenChange={onOpenChange}
       isSubmitting={updateMutation.isPending}
       requireDirty
@@ -115,6 +118,7 @@ export function CharacterEditDrawer({
             isActive: values.isActive,
             isFeatured: values.isFeatured,
             loraId: values.loraId,
+            voiceId: values.voiceId || null,
             description: values.description,
             personality: values.personality,
             avatarId: values.avatarId,

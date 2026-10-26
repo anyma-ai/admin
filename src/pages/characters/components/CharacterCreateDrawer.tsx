@@ -42,6 +42,7 @@ export function CharacterCreateDrawer({
           bodyType: values.bodyType,
           breastSize: values.breastSize,
           loraId: values.loraId,
+          voiceId: values.voiceId || undefined,
           description: values.description,
           avatarId: values.avatarId,
           isFeatured: values.isFeatured,

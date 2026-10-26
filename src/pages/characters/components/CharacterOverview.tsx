@@ -196,6 +196,11 @@ export function CharacterOverview({
               {formatCharacterPersonalities(data?.personality)}
             </Typography>
           </Field>
+        <Field label="Voice" labelFor="character-voice">
+          <Typography id="character-voice" variant="body">
+            {data?.voice?.name ?? '-'}
+          </Typography>
+        </Field>
       </FormRow>
     </div>
   );

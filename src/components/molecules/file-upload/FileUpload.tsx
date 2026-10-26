@@ -19,6 +19,10 @@ const EXTENSION_TO_MIME = {
   webm: 'video/webm',
   mov: 'video/quicktime',
   m4v: 'video/mp4',
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+  ogg: 'audio/ogg',
+  m4a: 'audio/mp4',
 } as const;
 
 type FileUploadStatus =

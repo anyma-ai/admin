@@ -62,6 +62,7 @@ export type CharacterUpdateDto = {
   name: string;
   emoji: string;
   loraId: string;
+  voiceId?: string | null;
   gender: string;
   age?: number
   hairColor: CharacterHairColor;
@@ -82,6 +83,7 @@ export type CharacterCreateDto = {
   name: string;
   emoji: string;
   loraId?: string;
+  voiceId?: string;
   gender: string;
   age?: number;
   hairColor: CharacterHairColor;

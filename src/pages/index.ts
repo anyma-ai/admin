@@ -64,3 +64,4 @@ export { UserDetailsPage } from './users/UserDetailsPage';
 export { UsersPage } from './users/UsersPage';
 export { VideoDetailsPage } from './videos/VideoDetailsPage';
 export { VideosPage } from './videos/VideosPage';
+export { VoicesPage } from './voices/VoicesPage';
