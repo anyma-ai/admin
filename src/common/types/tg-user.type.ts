@@ -35,7 +35,6 @@ export interface IUserPayment {
 
 export interface ITgUserDetails extends ITgUser {
   activeChat?: IChat | null;
-  chats: IChat[];
   payments: IUserPayment[];
   gifts: IGift[];
 }

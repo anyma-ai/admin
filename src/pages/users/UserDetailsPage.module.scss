@@ -59,6 +59,14 @@
   gap: var(--space-3);
 }
 
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
 .clickableRow {
   cursor: pointer;
 

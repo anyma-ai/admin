@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useMemo } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
+import { useChats } from '@/app/chats';
 import { useUserDetails } from '@/app/users';
 import {
   Alert,
@@ -11,6 +12,7 @@ import {
   EmptyState,
   Field,
   Grid,
+  Pagination,
   Section,
   Skeleton,
   Stack,
@@ -44,15 +46,58 @@ function formatNumber(value: number | null | undefined) {
     : '-';
 }
 
+const CHATS_PAGE_SIZE = 10;
+
+function parsePage(value: string | null) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) return 1;
+  return Math.floor(parsed);
+}
+
 export function UserDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const userId = id ?? '';
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data, error, isLoading, refetch } = useUserDetails(userId || null);
   const userActions = useUserActionModals();
 
+  const chatsPage = parsePage(searchParams.get('chatsPage'));
+  const chatsQuery = useChats(
+    {
+      userId,
+      order: 'DESC',
+      skip: (chatsPage - 1) * CHATS_PAGE_SIZE,
+      take: CHATS_PAGE_SIZE,
+    },
+    Boolean(userId),
+  );
+  const chats = useMemo(
+    () => chatsQuery.data?.data ?? [],
+    [chatsQuery.data?.data],
+  );
+  const chatsTotal = chatsQuery.data?.total ?? 0;
+  const chatsSkip = chatsQuery.data?.skip ?? (chatsPage - 1) * CHATS_PAGE_SIZE;
+  const chatsTotalPages =
+    chatsTotal > 0 ? Math.ceil(chatsTotal / CHATS_PAGE_SIZE) : 1;
+  const showChatsSkeleton = chatsQuery.isLoading && !chatsQuery.data;
+
+  const setChatsPage = useCallback(
+    (nextPage: number) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (nextPage > 1) {
+          next.set('chatsPage', String(nextPage));
+        } else {
+          next.delete('chatsPage');
+        }
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
+
   const subscription = data ? getSubscriptionStatus(data) : null;
-  const chats = useMemo(() => data?.chats ?? [], [data?.chats]);
   const payments = useMemo(() => data?.payments ?? [], [data?.payments]);
   const gifts = useMemo(() => data?.gifts ?? [], [data?.gifts]);
   const showSkeleton = isLoading && !data;
@@ -69,11 +114,10 @@ export function UserDetailsPage() {
     ],
     [],
   );
-  
 
   const chatRows = useMemo(
     () =>
-      chats.sort((a, b) => (new Date(b.createdAt)).getTime() - (new Date(a.createdAt)).getTime()).map((chat) => ({
+      chats.map((chat) => ({
         chat: (
           <div className={s.chatCell}>
             <Typography variant="body">{chat.id}</Typography>
@@ -478,33 +522,68 @@ export function UserDetailsPage() {
 
         <Section
           title="Chats"
-          description={data ? `${chats.length} chats` : undefined}
+          description={
+            chatsQuery.data
+              ? `${chatsTotal.toLocaleString()} chats`
+              : undefined
+          }
         >
-          {showSkeleton ? (
+          {chatsQuery.error ? (
+            <Stack className={s.state} gap="12px">
+              <Alert
+                title="Unable to load chats"
+                description={
+                  chatsQuery.error instanceof Error
+                    ? chatsQuery.error.message
+                    : 'Please try again.'
+                }
+                tone="warning"
+              />
+              <Button variant="secondary" onClick={() => chatsQuery.refetch()}>
+                Retry
+              </Button>
+            </Stack>
+          ) : showChatsSkeleton ? (
             <Table columns={chatColumns} rows={skeletonRows} />
-          ) : chats.length === 0 ? (
+          ) : chatsTotal === 0 ? (
             <EmptyState title="No chats" description="This user has no chats." />
           ) : (
-            <Table
-              columns={chatColumns}
-              rows={chatRows}
-              getRowProps={(_, index) => {
-                const chat = chats[index];
-                if (!chat) return {};
-                return {
-                  className: s.clickableRow,
-                  role: 'link',
-                  tabIndex: 0,
-                  onClick: () => navigate(`/chats/${chat.id}`),
-                  onKeyDown: (event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      navigate(`/chats/${chat.id}`);
-                    }
-                  },
-                };
-              }}
-            />
+            <Stack gap="12px">
+              <Table
+                columns={chatColumns}
+                rows={chatRows}
+                getRowProps={(_, index) => {
+                  const chat = chats[index];
+                  if (!chat) return {};
+                  return {
+                    className: s.clickableRow,
+                    role: 'link',
+                    tabIndex: 0,
+                    onClick: () => navigate(`/chats/${chat.id}`),
+                    onKeyDown: (event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        navigate(`/chats/${chat.id}`);
+                      }
+                    },
+                  };
+                }}
+              />
+              <div className={s.footer}>
+                <Typography variant="meta" tone="muted">
+                  {chats.length === 0
+                    ? 'No results'
+                    : `Showing ${chatsSkip + 1}-${chatsSkip + chats.length} of ${chatsTotal.toLocaleString()}`}
+                </Typography>
+                {chatsTotalPages > 1 ? (
+                  <Pagination
+                    page={chatsPage}
+                    totalPages={chatsTotalPages}
+                    onChange={setChatsPage}
+                  />
+                ) : null}
+              </div>
+            </Stack>
           )}
         </Section>
 
