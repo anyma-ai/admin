@@ -28,7 +28,10 @@ export async function getPayments(params: PaymentsQuery) {
     throw await buildApiError(res, fallbackError);
   }
 
-  return (await res.json()) as PaginatedResponse<IPayment>;
+  return (await res.json()) as PaginatedResponse<IPayment> & {
+    totalSum: number;
+    starPrice: number;
+  };
 }
 
 export async function getAllPayments(

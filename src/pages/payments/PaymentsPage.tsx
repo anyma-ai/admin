@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { downloadCsvFile } from '@/app/analytics';
+import { downloadCsvFile, formatCount, formatUsd } from '@/app/analytics';
 import { useCharacterDetails, useCharacters } from '@/app/characters';
 import { getAllPayments, usePayments } from '@/app/payments';
 import { usePlans } from '@/app/plans';
@@ -75,6 +75,11 @@ function formatDate(value: string | null | undefined) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return '-';
   return dateTimeFormatter.format(parsed);
+}
+
+function toUsd(amount: number, starPrice: number) {
+  // Strip float noise (15 * 0.013 = 0.19499999999999998) before rounding half up to cents.
+  return Math.round(Number((amount * starPrice * 100).toFixed(6))) / 100;
 }
 
 function formatUserName(user: ITgUser) {
@@ -391,6 +396,8 @@ export function PaymentsPage() {
     usePayments(queryParams);
   const payments = useMemo(() => data?.data ?? [], [data?.data]);
   const total = data?.total ?? 0;
+  const totalSum = Number(data?.totalSum ?? 0);
+  const starPrice = Number(data?.starPrice ?? 0);
   const effectiveTake = data?.take ?? pageSize;
   const effectiveSkip = data?.skip ?? (page - 1) * pageSize;
   const totalPages = total > 0 ? Math.ceil(total / effectiveTake) : 1;
@@ -404,6 +411,7 @@ export function PaymentsPage() {
     () => [
       { key: 'payment', label: 'Payment' },
       { key: 'amount', label: <span className={s.alignRight}>Amount</span> },
+      { key: 'usd', label: <span className={s.alignRight}>$</span> },
       { key: 'plan', label: 'Plan' },
       { key: 'user', label: 'User' },
       { key: 'character', label: 'Character' },
@@ -425,6 +433,11 @@ export function PaymentsPage() {
         amount: (
           <Typography variant="body" className={s.alignRight}>
             {payment.amount.toLocaleString()}
+          </Typography>
+        ),
+        usd: (
+          <Typography variant="body" className={s.alignRight}>
+            {formatUsd(toUsd(payment.amount, starPrice))}
           </Typography>
         ),
         plan: (
@@ -486,7 +499,7 @@ export function PaymentsPage() {
           </Typography>
         ),
       })),
-    [navigate, payments],
+    [navigate, payments, starPrice],
   );
 
   const skeletonRows = useMemo(
@@ -494,6 +507,7 @@ export function PaymentsPage() {
       Array.from({ length: 6 }, (_, index) => ({
         payment: <Skeleton key={`payment-${index}`} width={180} height={12} />,
         amount: <Skeleton width={60} height={12} />,
+        usd: <Skeleton width={60} height={12} />,
         plan: <Skeleton width={120} height={12} />,
         user: <Skeleton width={180} height={12} />,
         character: <Skeleton width={140} height={12} />,
@@ -524,6 +538,7 @@ export function PaymentsPage() {
           headers: [
             'Payment',
             'Amount',
+            '$',
             'Plan',
             'User',
             'Character',
@@ -534,6 +549,7 @@ export function PaymentsPage() {
           rows: exportPayments.map((payment) => [
             payment.id,
             payment.amount,
+            toUsd(payment.amount, starPrice).toFixed(2),
             `${payment.plan.code} / ${formatPlanType(payment.plan.type)}`,
             `${formatUserName(payment.user)} / ${formatUserMeta(payment.user)}`,
             payment.character
@@ -562,6 +578,7 @@ export function PaymentsPage() {
     filterParams,
     isExporting,
     isFetching,
+    starPrice,
     total,
   ]);
 
@@ -758,6 +775,13 @@ export function PaymentsPage() {
 
         {showTable ? (
           <div className={s.tableWrap}>
+            {showFooter ? (
+              <Typography variant="meta" tone="muted">
+                {formatCount(totalSum)} air /{' '}
+                {formatUsd(toUsd(totalSum, starPrice))}
+              </Typography>
+            ) : null}
+
             <Table
               columns={columns}
               rows={showSkeleton ? skeletonRows : rows}
