@@ -880,7 +880,13 @@ export function useUpdateCharacter() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: CharacterUpdateDto }) =>
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: Partial<CharacterUpdateDto>;
+    }) =>
       updateCharacter(id, payload),
     onSuccess: (data) => {
       queryClient.setQueryData(characterKeys.details(data.id), data);

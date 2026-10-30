@@ -15,6 +15,7 @@ import s from './CharacterDetailsPage.module.scss';
 import { CharacterEditDrawer } from './components/CharacterEditDrawer';
 import { CharacterHeader } from './components/CharacterHeader';
 import { CharacterOverview } from './components/CharacterOverview';
+import { CharacterUserTypesDrawer } from './components/CharacterUserTypesDrawer';
 import { ScenarioSection } from './components/ScenarioSection';
 import { StoriesSection } from './components/StoriesSection';
 
@@ -63,6 +64,7 @@ export function CharacterDetailsPage() {
   }, [scenarios, selectedScenarioId]);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isUserTypesOpen, setIsUserTypesOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const handleDelete = async () => {
@@ -97,6 +99,8 @@ export function CharacterDetailsPage() {
           data={data}
           isLoading={isLoading}
           onAddAnime={() => void handleAddAnime()}
+          onUserTypes={() => setIsUserTypesOpen(true)}
+          canEditUserTypes={Boolean(data)}
           canAddAnime={Boolean(data && data.type === CharacterType.Realistic)}
           isAddingAnime={cloneAnimeMutation.isPending}
           onDelete={() => setIsDeleteOpen(true)}
@@ -149,6 +153,12 @@ export function CharacterDetailsPage() {
           character={data ?? null}
           open={isEditOpen}
           onOpenChange={setIsEditOpen}
+        />
+
+        <CharacterUserTypesDrawer
+          character={data ?? null}
+          open={isUserTypesOpen}
+          onOpenChange={setIsUserTypesOpen}
         />
 
         <ConfirmModal

@@ -99,6 +99,15 @@ export enum CharacterPersonality {
   Intellectual = 'intellectual',
 }
 
+export interface CharacterUserTypeOverrides {
+  chatPrompt?: string;
+  resistance?: string;
+}
+
+export interface CharacterMeta {
+  userTypes?: Record<string, CharacterUserTypeOverrides>;
+}
+
 export interface ICharacterDetails extends ICharacter {
   lora: ILora;
   scenarios: IScenario[];
@@ -116,6 +125,7 @@ export interface ICharacterDetails extends ICharacter {
     name: string;
   } | null;
   eyeColor: CharacterEyeColor;
+  meta: CharacterMeta;
 }
 
 export interface CustomCharacterCreateDto {

@@ -7,6 +7,7 @@ import type {
   CharacterEyeColor,
   CharacterHairColor,
   CharacterHairStyle,
+  CharacterMeta,
   CharacterPersonality,
   CharacterType,
   ChatContent,
@@ -77,6 +78,7 @@ export type CharacterUpdateDto = {
   personality: CharacterPersonality[];
   avatarId: string;
   promoImgId?: string;
+  meta?: CharacterMeta;
 };
 
 export type CharacterCreateDto = {
@@ -627,7 +629,10 @@ export async function deleteScenarioVideo(
   return await parseJsonIfPresent(res);
 }
 
-export async function updateCharacter(id: string, payload: CharacterUpdateDto) {
+export async function updateCharacter(
+  id: string,
+  payload: Partial<CharacterUpdateDto>,
+) {
   const res = await apiFetch(`/admin/characters/${id}`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },

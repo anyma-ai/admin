@@ -1,5 +1,6 @@
-import { TrashIcon } from '@/assets/icons';
+import { TrashIcon, UserIcon } from '@/assets/icons';
 import { Badge, Button, IconButton, Skeleton, Typography } from '@/atoms';
+import { isX } from '@/common/is-x';
 import { CharacterType, type ICharacterDetails } from '@/common/types';
 import { capitalize } from '@/common/utils';
 
@@ -9,6 +10,8 @@ type CharacterHeaderProps = {
   data: ICharacterDetails | undefined;
   isLoading: boolean;
   onAddAnime: () => void;
+  onUserTypes: () => void;
+  canEditUserTypes: boolean;
   canAddAnime: boolean;
   isAddingAnime: boolean;
   onDelete: () => void;
@@ -20,6 +23,8 @@ export function CharacterHeader({
   data,
   isLoading,
   onAddAnime,
+  onUserTypes,
+  canEditUserTypes,
   canAddAnime,
   isAddingAnime,
   onDelete,
@@ -68,6 +73,17 @@ export function CharacterHeader({
           >
             Add Anime
           </Button>
+        ) : null}
+        {isX ? (
+          <IconButton
+            aria-label="User type overrides"
+            icon={<UserIcon />}
+            tooltip="User type overrides"
+            variant="ghost"
+            size="sm"
+            onClick={onUserTypes}
+            disabled={!canEditUserTypes || isDeleting || isAddingAnime}
+          />
         ) : null}
         <IconButton
           aria-label="Delete character"
